@@ -10,6 +10,7 @@ Static, content-driven Cantonese learning app for Mandarin-speaking adults. The 
 - Content lives in typed data files instead of hardcoded lesson JSX
 - Audio is manifest-based and points to bundled static files under `public/audio`
 - Script conversion is browser-side so the same content can render in Traditional or Simplified Chinese
+- Routing uses `HashRouter`, so deep links stay GitHub Pages-safe without any server rewrites
 
 The product is designed around a freeCodeCamp-style curriculum map: sections contain lessons, lessons contain ordered step types, and step rendering is driven by content data.
 
@@ -79,21 +80,35 @@ Asset rules:
 
 ## GitHub Pages Deployment
 
-The app is static, so deployment should publish the Vite build output to GitHub Pages.
+The app is fully static and ready for GitHub Pages.
 
-Notes:
+- `vite.config.ts` uses `base: './'` so assets resolve correctly from a Pages subpath
+- `src/main.tsx` uses `HashRouter`, so refreshes on nested app routes do not require a custom `404.html`
+- `.github/workflows/deploy-pages.yml` will build and deploy automatically when you push to `main`
+- `public/.nojekyll` is included so Pages serves the generated Vite output without Jekyll interference
 
-- Set the Vite `base` path correctly for the repository name
-- Publish the built `dist` directory
-- Keep all app assets relative and bundled for static hosting
-- Verify client-side routing works under the Pages subpath
+Recommended GitHub setup:
 
-Common deploy flow:
+1. In GitHub, open `Settings > Pages`.
+2. Set `Source` to `GitHub Actions`.
+3. Push to `main`.
+4. Wait for the `Deploy GitHub Pages` workflow to finish.
+5. Open the published Pages URL.
 
-1. Build the app.
-2. Publish the generated static files to the Pages branch or deployment target.
-3. Confirm refresh behavior on nested routes.
-4. Confirm audio asset URLs resolve under the repository base path.
+Local verification before push:
+
+1. Run `npm ci`.
+2. Run `npm run build`.
+3. Optionally run `npm run preview`.
+
+## Local Storage
+
+Progress and preferences are stored only in the browser via `localStorage`.
+
+- Storage key: `standard-cantonese:app-state:v1`
+- Stored data includes lesson completion, quiz scores, review-later flags, arcade stats, theme, script preference, and playback speed
+- Export/import/reset is available in the in-app settings page
+- No backend, account, or cloud sync is required for the app to function
 
 ## Future Scaling TODOs
 

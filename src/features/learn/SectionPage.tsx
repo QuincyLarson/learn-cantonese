@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { getLessonsForSection, getSectionById } from '@/features/learn/data';
+import { getLessonsForSection, getNextLessonForSection, getSectionById, getSectionStatus } from '@/features/learn/data';
 import { useProgressState, useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
 
@@ -21,16 +21,24 @@ export function SectionPage() {
   }
 
   const lessons = getLessonsForSection(section.id);
+  const nextLesson = getNextLessonForSection(section.id, progress.completedLessonIds);
+  const status = getSectionStatus(section.id, progress.completedLessonIds, progress.reviewLaterIds);
 
   return (
     <div className="page-stack">
-      <section className="page-intro">
-        <p className="eyebrow">{text(section.title)}</p>
-        <h1>{text(section.subtitle)}</h1>
-        <p>{text(section.summary)}</p>
+      <section className="curriculum-head">
+        <div className="curriculum-head__copy">
+          <h1>{text(section.title)}</h1>
+          <p>{text(section.summary)}</p>
+        </div>
+        {nextLesson ? (
+          <Link className="button button--primary" to={`/learn/lesson/${nextLesson.id}`}>
+            {status === 'new' ? text('開始本章') : status === 'active' ? text('繼續本章') : text('重練本章')}
+          </Link>
+        ) : null}
       </section>
 
-      <section className="lesson-list">
+      <section className="lesson-list lesson-list--compact">
         {lessons.map((lesson) => {
           const complete = progress.completedLessonIds.includes(lesson.id);
           const reviewLater = progress.reviewLaterIds.includes(lesson.id);
@@ -38,25 +46,15 @@ export function SectionPage() {
           return (
             <article key={lesson.id} className="lesson-list__item">
               <div>
-                <p className="eyebrow">
-                  {text('約')} {lesson.estimatedMinutes} {text('分鐘')}
-                </p>
                 <h2>{text(lesson.title)}</h2>
                 <p>{text(lesson.summary)}</p>
-                <div className="lesson-chip-row">
-                  {lesson.objectives.map((objective) => (
-                    <span key={objective} className="lesson-chip">
-                      {text(objective)}
-                    </span>
-                  ))}
-                </div>
               </div>
               <div className="lesson-list__actions">
                 <span className={complete ? 'progress-pill is-complete' : reviewLater ? 'progress-pill is-flagged' : 'progress-pill'}>
                   {complete ? text('已完成') : reviewLater ? text('待複習') : text('未開始')}
                 </span>
-                <Link className="button button--primary" to={`/learn/lesson/${lesson.id}`}>
-                  {complete ? text('再做一次') : text('開始')}
+                <Link className="button button--secondary" to={`/learn/lesson/${lesson.id}`}>
+                  {complete ? text('重練') : text('進入')}
                 </Link>
               </div>
             </article>
@@ -66,11 +64,10 @@ export function SectionPage() {
 
       {section.checkpointLessonId ? (
         <section className="surface-card checkpoint-card">
-          <p className="eyebrow">{text('Section Quiz')}</p>
-          <h2>{text('做本章小測')}</h2>
-          <p>{text('這份小測會把本段的問候、數字、聲調和實用問路句串成一輪。')}</p>
+          <h2>{text('本章小測')}</h2>
+          <p>{text('把本章內容跑一遍。')}</p>
           <Link className="button button--primary" to={`/learn/section/${section.id}/quiz`}>
-            {text('開始測驗')}
+            {text('開始小測')}
           </Link>
         </section>
       ) : null}

@@ -60,8 +60,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const navItems = useMemo(
     () => [
-      { to: '/learn', label: text('學習') },
-      { to: '/arcade', label: text('Arcade') },
+      { to: '/', label: text('課程') },
+      { to: '/arcade', label: text('快練') },
       { to: '/settings', label: text('設定') },
     ],
     [text],
@@ -72,8 +72,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <header className="topbar">
         <div className="topbar__inner">
           <Link to="/" className="brandmark" aria-label={text('返回首頁')}>
-            <span className="brandmark__eyebrow">Standard Cantonese</span>
-            <span className="brandmark__title">{text('普通話使用者標準粵語')}</span>
+            <span className="brandmark__title">{text('普通話學粵語')}</span>
           </Link>
 
           <nav className="topnav" aria-label={text('主導覽')}>

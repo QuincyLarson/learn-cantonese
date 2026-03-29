@@ -1,284 +1,320 @@
-import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  ChooseJyutpingStep,
-  ChooseToneStep,
   DialogueStep,
   FillBlankStep,
   JyutpingInputStep,
-  LearnCardStep,
   LessonStep,
-  ListenAndChooseStep,
-  QuizItemStep,
   ReorderTilesStep,
-  SignageReadingStep,
   StepChoice,
 } from '@/content';
 import { AudioButton } from '@/features/audio/AudioButton';
 import { GlossaryPopover } from '@/features/glossary/GlossaryPopover';
-import { getAudioAsset, getGlossaryEntries } from '@/features/learn/data';
-import { RepeatMachineCard } from '@/features/learn/RepeatMachineCard';
 import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
+import { getAudioAsset, getGlossaryEntries } from '@/features/learn/data';
+import { RepeatMachineCard } from '@/features/learn/RepeatMachineCard';
+
+export type StepContinuePayload = {
+  firstTryCorrect?: boolean;
+  message?: string;
+};
 
 type LessonStepRendererProps = {
   lessonId: string;
   step: LessonStep;
   mode?: 'lesson' | 'quiz';
-  onContinue: (isCorrect?: boolean) => void;
+  busy?: boolean;
+  onContinue: (payload?: StepContinuePayload) => void;
 };
 
-function GlossaryStrip({ glossaryIds }: { glossaryIds?: readonly string[] }) {
-  const entries = getGlossaryEntries(glossaryIds);
+type StepFrameProps = {
+  heading: string;
+  children: ReactNode;
+  glossaryIds?: readonly string[];
+};
 
-  if (entries.length === 0) {
-    return null;
-  }
+type ChoiceStepProps = {
+  heading: string;
+  choices: readonly StepChoice[];
+  correctChoiceId: string;
+  busy?: boolean;
+  glossaryIds?: readonly string[];
+  beforeChoices?: ReactNode;
+  onResolve: (payload: StepContinuePayload) => void;
+};
 
-  return (
-    <div className="glossary-strip">
-      <span className="eyebrow">Glossary</span>
-      <div className="glossary-strip__items">
-        {entries.map((entry) => (
-          <GlossaryPopover key={entry.id} entry={entry} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Feedback({
-  isCorrect,
-  explanation,
-}: {
-  isCorrect: boolean;
-  explanation: string;
-}) {
+function StepFrame({ heading, children, glossaryIds }: StepFrameProps) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
+  const glossaryEntries = useMemo(() => getGlossaryEntries(glossaryIds), [glossaryIds]);
 
   return (
-    <div className={isCorrect ? 'feedback feedback--success' : 'feedback feedback--error'} aria-live="polite">
-      <strong>{isCorrect ? text('答對了') : text('再看一次')}</strong>
-      <p>{text(explanation)}</p>
-    </div>
-  );
-}
+    <section className="step-card">
+      <header className="step-card__header">
+        <h2>{text(heading)}</h2>
+      </header>
 
-function ChoiceButton({
-  label,
-  selected,
-  correct,
-  wrong,
-  onClick,
-}: {
-  label: string;
-  selected?: boolean;
-  correct?: boolean;
-  wrong?: boolean;
-  onClick: () => void;
-}) {
-  let className = 'choice-button';
-  if (selected) {
-    className += ' is-selected';
-  }
-  if (correct) {
-    className += ' is-correct';
-  }
-  if (wrong) {
-    className += ' is-wrong';
-  }
+      {glossaryEntries.length > 0 ? (
+        <div className="glossary-strip" aria-label={text('詞彙提示')}>
+          <div className="glossary-strip__items">
+            {glossaryEntries.map((entry) => (
+              <GlossaryPopover key={entry.id} entry={entry} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
-  return (
-    <button type="button" className={className} onClick={onClick}>
-      {label}
-    </button>
+      {children}
+    </section>
   );
 }
 
 function ChoiceStep({
-  title,
-  eyebrow,
-  prompt,
+  heading,
   choices,
   correctChoiceId,
-  explanation,
-  audioId,
+  busy = false,
   glossaryIds,
-  onContinue,
-  continueLabel,
-}: {
-  title: string;
-  eyebrow: string;
-  prompt: string;
-  choices: readonly StepChoice[];
-  correctChoiceId: string;
-  explanation: string;
-  audioId?: string;
-  glossaryIds?: readonly string[];
-  onContinue: (isCorrect: boolean) => void;
-  continueLabel: string;
-}) {
+  beforeChoices,
+  onResolve,
+}: ChoiceStepProps) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
-  const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
-  const audio = useMemo(() => getAudioAsset(audioId), [audioId]);
-  const isCorrect = selectedChoiceId === correctChoiceId;
-  const answered = Boolean(selectedChoiceId);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const handleChoice = (choiceId: string) => {
+    if (busy) {
+      return;
+    }
+
+    setSelectedId(choiceId);
+
+    if (choiceId === correctChoiceId) {
+      setFeedback(null);
+      onResolve({ firstTryCorrect: !hadWrongAttempt, message: '答對' });
+      return;
+    }
+
+    setHadWrongAttempt(true);
+    setFeedback(text('再試一次。'));
+  };
 
   return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text(eyebrow)}</p>
-        <h2>{text(title)}</h2>
-        <p>{text(prompt)}</p>
-      </header>
+    <StepFrame heading={heading} glossaryIds={glossaryIds}>
+      {beforeChoices}
 
-      {audio ? (
-        <div className="step-card__media">
-          <AudioButton asset={audio} label={text('播放提示音')} />
-        </div>
-      ) : null}
+      <div className="choice-grid">
+        {choices.map((choice) => {
+          const isCorrect = choice.id === correctChoiceId;
+          const isSelected = selectedId === choice.id;
+          const className =
+            isSelected && !busy
+              ? isCorrect
+                ? 'choice-button is-correct'
+                : 'choice-button is-wrong'
+              : busy && isCorrect
+                ? 'choice-button is-correct'
+                : 'choice-button';
 
-      <div className="choice-grid" role="group" aria-label={text(prompt)}>
-        {choices.map((choice) => (
-          <ChoiceButton
-            key={choice.id}
-            label={text(choice.label)}
-            selected={selectedChoiceId === choice.id}
-            correct={answered && choice.id === correctChoiceId}
-            wrong={selectedChoiceId === choice.id && selectedChoiceId !== correctChoiceId}
-            onClick={() => setSelectedChoiceId(choice.id)}
-          />
-        ))}
+          return (
+            <button
+              key={choice.id}
+              type="button"
+              className={className}
+              onClick={() => handleChoice(choice.id)}
+              disabled={busy}
+            >
+              <span>{text(choice.label)}</span>
+              {choice.jyutping ? <span className="choice-button__meta">{choice.jyutping}</span> : null}
+            </button>
+          );
+        })}
       </div>
 
-      {answered ? <Feedback isCorrect={isCorrect} explanation={explanation} /> : null}
-      <GlossaryStrip glossaryIds={glossaryIds} />
-
-      <footer className="step-card__footer">
-        <button type="button" className="button button--primary" disabled={!answered} onClick={() => onContinue(isCorrect)}>
-          {text(continueLabel)}
-        </button>
-      </footer>
-    </section>
+      {feedback ? (
+        <p className="feedback feedback--error" role="status" aria-live="polite">
+          {feedback}
+        </p>
+      ) : null}
+    </StepFrame>
   );
 }
 
-function LearnCard({
+function renderTemplate(template: string, answer: string, text: (input: string) => string) {
+  const [prefix, suffix] = template.split('___');
+  return (
+    <>
+      {text(prefix ?? '')}
+      <span className="fill-blank-shell__answer">{answer ? text(answer) : '＿'}</span>
+      {text(suffix ?? '')}
+    </>
+  );
+}
+
+function FillBlankCard({
   step,
-  onContinue,
+  busy,
+  onResolve,
 }: {
-  step: LearnCardStep;
-  onContinue: () => void;
+  step: FillBlankStep;
+  busy?: boolean;
+  onResolve: (payload: StepContinuePayload) => void;
 }) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
-  const audioAssets = (step.audioIds ?? [])
-    .map((audioId) => getAudioAsset(audioId))
-    .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
+  const [selectedWord, setSelectedWord] = useState('');
+  const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const handleChoice = (word: string) => {
+    if (busy) {
+      return;
+    }
+
+    setSelectedWord(word);
+
+    if (word === step.answer) {
+      setFeedback(null);
+      onResolve({ firstTryCorrect: !hadWrongAttempt, message: '答對' });
+      return;
+    }
+
+    setHadWrongAttempt(true);
+    setFeedback(text('再試一次。'));
+  };
 
   return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Learn Card')}</p>
-        <h2>{text(step.title)}</h2>
-      </header>
-
-      <div className="split-panel">
-        <article className="surface-card">
-          <span className="eyebrow">{text('正面')}</span>
-          <h3>{text(step.front.heading)}</h3>
-          <p>{text(step.front.body)}</p>
-        </article>
-        <article className="surface-card">
-          <span className="eyebrow">{text('反面')}</span>
-          <h3>{text(step.back.heading)}</h3>
-          <p>{text(step.back.body)}</p>
-          {step.back.bullets?.length ? (
-            <ul className="detail-list">
-              {step.back.bullets.map((bullet) => (
-                <li key={bullet}>{text(bullet)}</li>
-              ))}
-            </ul>
-          ) : null}
-        </article>
+    <StepFrame heading={step.prompt} glossaryIds={step.glossaryIds}>
+      <div className="fill-blank-shell">
+        <p className="fill-blank-shell__template">
+          {renderTemplate(step.template, selectedWord, text)}
+        </p>
       </div>
 
-      {audioAssets.length ? (
-        <div className="audio-stack">
-          {audioAssets.map((asset) => (
-            <AudioButton key={asset.id} asset={asset} label={text(`播放 ${asset.label}`)} />
-          ))}
-        </div>
+      <div className="choice-grid">
+        {step.wordBank.map((word) => {
+          const isSelected = selectedWord === word;
+          const className =
+            isSelected && !busy
+              ? word === step.answer
+                ? 'choice-button is-correct'
+                : 'choice-button is-wrong'
+              : busy && word === step.answer
+                ? 'choice-button is-correct'
+                : 'choice-button';
+
+          return (
+            <button
+              key={word}
+              type="button"
+              className={className}
+              onClick={() => handleChoice(word)}
+              disabled={busy}
+            >
+              {text(word)}
+            </button>
+          );
+        })}
+      </div>
+
+      {feedback ? (
+        <p className="feedback feedback--error" role="status" aria-live="polite">
+          {feedback}
+        </p>
       ) : null}
-
-      <GlossaryStrip glossaryIds={step.glossaryIds} />
-
-      <footer className="step-card__footer">
-        <button type="button" className="button button--primary" onClick={onContinue}>
-          {text('我看完了')}
-        </button>
-      </footer>
-    </section>
+    </StepFrame>
   );
 }
 
 function ReorderTilesCard({
   step,
-  onContinue,
+  busy,
+  onResolve,
 }: {
   step: ReorderTilesStep;
-  onContinue: (isCorrect: boolean) => void;
+  busy?: boolean;
+  onResolve: (payload: StepContinuePayload) => void;
 }) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
-  const [answer, setAnswer] = useState<string[]>([]);
-  const [checked, setChecked] = useState(false);
-  const isCorrect = answer.join('|') === step.correctOrder.join('|');
-  const remaining = step.tiles.filter((tile) => !answer.includes(tile));
+  const resetTimeoutRef = useRef<number | null>(null);
+  const [pickedTiles, setPickedTiles] = useState<string[]>([]);
+  const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  const handleCheck = () => {
-    setChecked(true);
+  const remainingTiles = step.tiles.filter((tile) => !pickedTiles.includes(tile));
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current !== null) {
+        window.clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handlePick = (tile: string) => {
+    if (busy || pickedTiles.includes(tile)) {
+      return;
+    }
+
+    const nextPicked = [...pickedTiles, tile];
+    setPickedTiles(nextPicked);
+
+    if (nextPicked.length !== step.correctOrder.length) {
+      return;
+    }
+
+    const isCorrect = nextPicked.join('|') === step.correctOrder.join('|');
+    if (isCorrect) {
+      setFeedback(null);
+      onResolve({ firstTryCorrect: !hadWrongAttempt, message: '答對' });
+      return;
+    }
+
+    setHadWrongAttempt(true);
+    setFeedback(text('順序再試一次。'));
+    resetTimeoutRef.current = window.setTimeout(() => {
+      setPickedTiles([]);
+    }, 450);
   };
 
   return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Reorder')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
-      </header>
-
+    <StepFrame heading={step.prompt} glossaryIds={step.glossaryIds}>
       <div className="tile-tray">
         <div className="tile-tray__lane">
-          <span className="eyebrow">{text('你的答案')}</span>
-          <div className="tile-tray__tiles">
-            {answer.length ? (
-              answer.map((tile) => (
+          <strong>{text('你的順序')}</strong>
+          <div className="tile-tray__tiles tile-tray__tiles--answer" aria-live="polite">
+            {pickedTiles.length > 0 ? (
+              pickedTiles.map((tile, index) => (
                 <button
-                  key={`answer-${tile}`}
+                  key={`${tile}-${index}`}
                   type="button"
                   className="tile-button tile-button--active"
-                  onClick={() => setAnswer((current) => current.filter((entry) => entry !== tile))}
+                  onClick={() => setPickedTiles((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                  disabled={busy}
                 >
                   {text(tile)}
                 </button>
               ))
             ) : (
-              <span className="muted-text">{text('按下方詞塊建立順序')}</span>
+              <span className="tile-tray__placeholder">{text('按下面字卡排順。')}</span>
             )}
           </div>
         </div>
 
         <div className="tile-tray__lane">
-          <span className="eyebrow">{text('可用詞塊')}</span>
+          <strong>{text('可用字卡')}</strong>
           <div className="tile-tray__tiles">
-            {remaining.map((tile) => (
+            {remainingTiles.map((tile) => (
               <button
                 key={tile}
                 type="button"
                 className="tile-button"
-                onClick={() => setAnswer((current) => [...current, tile])}
+                onClick={() => handlePick(tile)}
+                disabled={busy}
               >
                 {text(tile)}
               </button>
@@ -287,301 +323,186 @@ function ReorderTilesCard({
         </div>
       </div>
 
-      {checked ? <Feedback isCorrect={isCorrect} explanation={step.explanation} /> : null}
-      <GlossaryStrip glossaryIds={step.glossaryIds} />
-
-      <footer className="step-card__footer">
-        <button type="button" className="button button--secondary" onClick={() => setAnswer([])}>
-          {text('清空')}
-        </button>
-        {!checked ? (
-          <button type="button" className="button button--primary" disabled={answer.length !== step.correctOrder.length} onClick={handleCheck}>
-            {text('檢查答案')}
-          </button>
-        ) : (
-          <button type="button" className="button button--primary" onClick={() => onContinue(isCorrect)}>
-            {text('下一步')}
-          </button>
-        )}
-      </footer>
-    </section>
+      {feedback ? (
+        <p className="feedback feedback--error" role="status" aria-live="polite">
+          {feedback}
+        </p>
+      ) : null}
+    </StepFrame>
   );
 }
 
-function FillBlankCard({
-  step,
-  onContinue,
-}: {
-  step: FillBlankStep;
-  onContinue: (isCorrect: boolean) => void;
-}) {
-  const { scriptPreference } = useSettingsState();
-  const text = useScriptText(scriptPreference);
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
-  const isCorrect = selectedWord === step.answer;
-
-  return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Fill Blank')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
-      </header>
-
-      <div className="fill-blank-shell">
-        <div className="surface-card fill-blank-shell__template">
-          {text(step.template).replace('___', selectedWord ? text(selectedWord) : '_____')}
-        </div>
-        <div className="choice-grid">
-          {step.wordBank.map((word) => (
-            <ChoiceButton
-              key={word}
-              label={text(word)}
-              selected={selectedWord === word}
-              correct={checked && word === step.answer}
-              wrong={checked && selectedWord === word && word !== step.answer}
-              onClick={() => setSelectedWord(word)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {checked ? <Feedback isCorrect={isCorrect} explanation={step.explanation} /> : null}
-      <GlossaryStrip glossaryIds={step.glossaryIds} />
-
-      <footer className="step-card__footer">
-        {!checked ? (
-          <button type="button" className="button button--primary" disabled={!selectedWord} onClick={() => setChecked(true)}>
-            {text('檢查答案')}
-          </button>
-        ) : (
-          <button type="button" className="button button--primary" onClick={() => onContinue(isCorrect)}>
-            {text('下一步')}
-          </button>
-        )}
-      </footer>
-    </section>
-  );
-}
-
-function ChooseToneCard({
-  step,
-  onContinue,
-}: {
-  step: ChooseToneStep;
-  onContinue: (isCorrect: boolean) => void;
-}) {
-  const choices = step.choices.map((choice) => ({
-    id: String(choice),
-    label: `${choice} 聲`,
-  }));
-
-  return (
-    <ChoiceStep
-      title={step.title}
-      eyebrow="Choose Tone"
-      prompt={`${step.prompt} ${step.syllable}`}
-      choices={choices}
-      correctChoiceId={String(step.correctTone)}
-      explanation={step.explanation}
-      audioId={step.audioId}
-      continueLabel="下一步"
-      onContinue={onContinue}
-    />
-  );
+function normalizeJyutpingInput(input: string) {
+  return input.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function JyutpingInputCard({
   step,
-  onContinue,
+  busy,
+  onResolve,
 }: {
   step: JyutpingInputStep;
-  onContinue: (isCorrect: boolean) => void;
+  busy?: boolean;
+  onResolve: (payload: StepContinuePayload) => void;
 }) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
   const [value, setValue] = useState('');
-  const [checked, setChecked] = useState(false);
-  const normalized = value.trim().replace(/\s+/g, ' ');
-  const target = step.targetTokens.join(' ');
-  const isCorrect = normalized === target;
-  const lastToken = normalized.split(' ').at(-1) ?? '';
-  const tokenSuggestions = step.suggestions.filter((suggestion) => suggestion.token.startsWith(lastToken));
-  const exactMatches = step.suggestions.filter((suggestion) => suggestion.token === lastToken);
-  const phraseSuggestions = step.phraseSuggestions?.filter((suggestion) => suggestion.input.startsWith(normalized));
+  const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const normalizedValue = normalizeJyutpingInput(value);
+  const targetValue = normalizeJyutpingInput(step.targetTokens.join(' '));
+  const activeToken = normalizedValue.split(' ').filter(Boolean).at(-1) ?? '';
+  const exactSuggestions = step.suggestions.filter(
+    (suggestion) => activeToken && normalizeJyutpingInput(suggestion.token) === activeToken,
+  );
+  const matchingPhrases = (step.phraseSuggestions ?? []).filter(
+    (phrase) => normalizedValue && normalizeJyutpingInput(phrase.input) === normalizedValue,
+  );
+
+  const handleSubmit = () => {
+    if (busy) {
+      return;
+    }
+
+    if (normalizedValue === targetValue) {
+      setFeedback(null);
+      onResolve({ firstTryCorrect: !hadWrongAttempt, message: '答對' });
+      return;
+    }
+
+    setHadWrongAttempt(true);
+    setFeedback(text('再試一次。'));
+  };
 
   return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Jyutping Input')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
-      </header>
-
+    <StepFrame heading={step.prompt}>
       <label className="input-field">
-        <span className="eyebrow">{text('輸入 Jyutping')}</span>
+        <span className="muted-text">{text('輸入粵拼')}</span>
         <input
           value={value}
           onChange={(event) => {
-            setChecked(false);
             setValue(event.target.value);
+            if (feedback) {
+              setFeedback(null);
+            }
           }}
-          placeholder="nei5 hou2"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              handleSubmit();
+            }
+          }}
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
+          placeholder={text(step.targetTokens.join(' '))}
+          disabled={busy}
+          aria-label={text('粵拼輸入')}
         />
       </label>
 
-      <div className="suggestion-grid">
-        <article className="surface-card">
-          <span className="eyebrow">{text('音節建議')}</span>
-          <ul className="detail-list">
-            {(tokenSuggestions.length ? tokenSuggestions : step.suggestions.slice(0, 4)).map((suggestion) => (
-              <li key={`${suggestion.token}-${suggestion.displayText}`}>
-                <strong>{suggestion.token}</strong> {text(suggestion.displayText)}
-              </li>
-            ))}
-          </ul>
-        </article>
-        <article className="surface-card">
-          <span className="eyebrow">{text('完整匹配')}</span>
-          <ul className="detail-list">
-            {(exactMatches.length ? exactMatches : step.suggestions.slice(0, 2)).map((suggestion) => (
-              <li key={`match-${suggestion.token}-${suggestion.displayText}`}>
-                <strong>{text(suggestion.displayText)}</strong> {suggestion.jyutping}
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
-
-      {phraseSuggestions?.length ? (
-        <div className="surface-card">
-          <span className="eyebrow">{text('片語提示')}</span>
-          <ul className="detail-list">
-            {phraseSuggestions.map((suggestion) => (
-              <li key={suggestion.input}>
-                <strong>{suggestion.input}</strong> {text(suggestion.displayText)}
-              </li>
-            ))}
-          </ul>
+      {exactSuggestions.length > 0 ? (
+        <div className="suggestion-grid">
+          {exactSuggestions.map((suggestion) => (
+            <article key={`${suggestion.token}-${suggestion.displayText}`} className="surface-card">
+              <strong>{text(suggestion.displayText)}</strong>
+              <span className="muted-text">{suggestion.jyutping}</span>
+              {suggestion.note ? <span className="muted-text">{text(suggestion.note)}</span> : null}
+            </article>
+          ))}
         </div>
       ) : null}
 
-      {checked ? <Feedback isCorrect={isCorrect} explanation={step.explanation} /> : null}
+      {matchingPhrases.length > 0 ? (
+        <div className="suggestion-grid">
+          {matchingPhrases.map((phrase) => (
+            <article key={phrase.input} className="surface-card">
+              <strong>{text(phrase.displayText)}</strong>
+              <span className="muted-text">{normalizeJyutpingInput(phrase.input)}</span>
+              {phrase.note ? <span className="muted-text">{text(phrase.note)}</span> : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
 
-      <footer className="step-card__footer">
-        {!checked ? (
-          <button type="button" className="button button--primary" disabled={!normalized} onClick={() => setChecked(true)}>
-            {text('檢查輸入')}
-          </button>
-        ) : (
-          <button type="button" className="button button--primary" onClick={() => onContinue(isCorrect)}>
-            {text('下一步')}
-          </button>
-        )}
-      </footer>
-    </section>
+      {feedback ? (
+        <p className="feedback feedback--error" role="status" aria-live="polite">
+          {feedback}
+        </p>
+      ) : null}
+
+      <div className="step-card__footer">
+        <button type="button" className="button button--primary" onClick={handleSubmit} disabled={busy || !normalizedValue}>
+          {text('確定')}
+        </button>
+      </div>
+    </StepFrame>
   );
 }
 
 function DialogueCard({
   step,
-  onContinue,
+  busy,
+  onResolve,
 }: {
   step: DialogueStep;
-  onContinue: () => void;
+  busy?: boolean;
+  onResolve: (payload: StepContinuePayload) => void;
 }) {
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
+  const playableAudioIds = step.turns
+    .map((turn) => getAudioAsset(turn.audioId)?.id)
+    .filter((audioId): audioId is string => Boolean(audioId));
+  const [heardAudioIds, setHeardAudioIds] = useState<string[]>([]);
+  const totalAudio = playableAudioIds.length;
+  const heardAll = totalAudio === 0 || playableAudioIds.every((audioId) => heardAudioIds.includes(audioId));
 
   return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Dialogue')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
-      </header>
-
+    <StepFrame heading={step.prompt} glossaryIds={step.glossaryIds}>
       <div className="dialogue-stack">
-        {step.turns.map((turn) => (
-          <article key={`${turn.speakerId}-${turn.text}`} className="dialogue-turn">
-            <div>
-              <span className="eyebrow">{text(turn.speakerLabel)}</span>
-              <p>{text(turn.text)}</p>
-            </div>
-            <AudioButton asset={getAudioAsset(turn.audioId)} compact label={text(`播放 ${turn.speakerLabel}`)} />
-          </article>
-        ))}
+        {step.turns.map((turn, index) => {
+          const asset = getAudioAsset(turn.audioId);
+
+          return (
+            <article key={`${turn.speakerId}-${index}`} className="dialogue-turn">
+              <div>
+                <strong>{text(turn.speakerLabel)}</strong>
+                <p>{text(turn.text)}</p>
+              </div>
+              {asset ? (
+                <AudioButton
+                  asset={asset}
+                  compact
+                  label={text('播放句子')}
+                  onPlay={() => {
+                    setHeardAudioIds((current) => (current.includes(asset.id) ? current : [...current, asset.id]));
+                  }}
+                />
+              ) : (
+                <span className="audio-pill audio-pill--missing">{text('音訊未附上')}</span>
+              )}
+            </article>
+          );
+        })}
       </div>
 
-      <div className="surface-card">
-        <span className="eyebrow">{text('總結')}</span>
-        <p>{text(step.summary)}</p>
-      </div>
-      <GlossaryStrip glossaryIds={step.glossaryIds} />
-
-      <footer className="step-card__footer">
-        <button type="button" className="button button--primary" onClick={onContinue}>
-          {text('繼續')}
+      <div className="step-card__footer">
+        <span className="muted-text">
+          {totalAudio > 0 ? `${text('已聽')} ${heardAudioIds.length}/${totalAudio}` : text('這一步可以直接完成。')}
+        </span>
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={() => onResolve({ message: '完成' })}
+          disabled={busy || !heardAll}
+        >
+          {text('完成本步')}
         </button>
-      </footer>
-    </section>
-  );
-}
-
-function SignageCard({
-  step,
-  onContinue,
-}: {
-  step: SignageReadingStep;
-  onContinue: (isCorrect: boolean) => void;
-}) {
-  const { scriptPreference } = useSettingsState();
-  const text = useScriptText(scriptPreference);
-
-  const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
-  const answered = Boolean(selectedChoiceId);
-  const isCorrect = selectedChoiceId === step.correctChoiceId;
-
-  return (
-    <section className="step-card">
-      <header className="step-card__header">
-        <p className="eyebrow">{text('Signage')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
-      </header>
-
-      <div className="signage-card">
-        {text(step.signText).split('\n').map((line) => (
-          <span key={line}>{line}</span>
-        ))}
       </div>
-
-      <div className="choice-grid">
-        {step.choices.map((choice) => (
-          <ChoiceButton
-            key={choice.id}
-            label={text(choice.label)}
-            selected={selectedChoiceId === choice.id}
-            correct={answered && choice.id === step.correctChoiceId}
-            wrong={selectedChoiceId === choice.id && selectedChoiceId !== step.correctChoiceId}
-            onClick={() => setSelectedChoiceId(choice.id)}
-          />
-        ))}
-      </div>
-
-      {answered ? <Feedback isCorrect={isCorrect} explanation={step.explanation} /> : null}
-      <GlossaryStrip glossaryIds={step.glossaryIds} />
-
-      <footer className="step-card__footer">
-        <button type="button" className="button button--primary" disabled={!answered} onClick={() => onContinue(isCorrect)}>
-          {text('下一步')}
-        </button>
-      </footer>
-    </section>
+    </StepFrame>
   );
 }
 
@@ -589,70 +510,111 @@ export function LessonStepRenderer({
   lessonId,
   step,
   mode = 'lesson',
+  busy = false,
   onContinue,
 }: LessonStepRendererProps) {
-  const continueLabel = mode === 'quiz' ? '下一題' : '下一步';
+  const { scriptPreference } = useSettingsState();
+  const text = useScriptText(scriptPreference);
 
   switch (step.kind) {
-    case 'learnCard':
-      return <LearnCard step={step} onContinue={() => onContinue()} />;
     case 'listenAndChoose':
       return (
         <ChoiceStep
-          title={step.title}
-          eyebrow="Listen & Choose"
-          prompt={step.prompt}
+          heading={step.prompt}
           choices={step.choices}
           correctChoiceId={step.correctChoiceId}
-          explanation={step.explanation}
-          audioId={step.audioId}
           glossaryIds={step.glossaryIds}
-          continueLabel={continueLabel}
-          onContinue={onContinue}
+          busy={busy}
+          beforeChoices={<AudioButton asset={getAudioAsset(step.audioId)} label={text('播放題目')} />}
+          onResolve={onContinue}
         />
       );
+
     case 'chooseJyutping':
       return (
         <ChoiceStep
-          title={step.title}
-          eyebrow="Choose Jyutping"
-          prompt={`${step.prompt} ${step.targetText}`}
+          heading={step.prompt}
           choices={step.choices}
           correctChoiceId={step.correctChoiceId}
-          explanation={step.explanation}
           glossaryIds={step.glossaryIds}
-          continueLabel={continueLabel}
-          onContinue={onContinue}
+          busy={busy}
+          beforeChoices={<p className="prompt-display prompt-display--text">{text(step.targetText)}</p>}
+          onResolve={onContinue}
         />
       );
+
     case 'chooseTone':
-      return <ChooseToneCard step={step} onContinue={onContinue} />;
+      return (
+        <ChoiceStep
+          heading={step.prompt}
+          choices={step.choices.map((choice) => ({
+            id: String(choice),
+            label: ['零', '一', '二', '三', '四', '五', '六'][choice] + '聲',
+          }))}
+          correctChoiceId={String(step.correctTone)}
+          busy={busy}
+          beforeChoices={
+            <div className="prompt-display-shell">
+              <p className="prompt-display prompt-display--jyutping">{step.syllable}</p>
+              {step.audioId ? <AudioButton asset={getAudioAsset(step.audioId)} label={text('播放音節')} compact /> : null}
+            </div>
+          }
+          onResolve={onContinue}
+        />
+      );
+
     case 'reorderTiles':
-      return <ReorderTilesCard step={step} onContinue={onContinue} />;
+      return <ReorderTilesCard step={step} busy={busy} onResolve={onContinue} />;
+
     case 'fillBlank':
-      return <FillBlankCard step={step} onContinue={onContinue} />;
+      return <FillBlankCard step={step} busy={busy} onResolve={onContinue} />;
+
     case 'signageReading':
-      return <SignageCard step={step} onContinue={onContinue} />;
+      return (
+        <ChoiceStep
+          heading={step.prompt}
+          choices={step.choices}
+          correctChoiceId={step.correctChoiceId}
+          glossaryIds={step.glossaryIds}
+          busy={busy}
+          beforeChoices={<pre className="signage-card">{text(step.signText)}</pre>}
+          onResolve={onContinue}
+        />
+      );
+
     case 'repeatMachine':
-      return <RepeatMachineCard lessonId={lessonId} step={step} onContinue={() => onContinue()} />;
+      return <RepeatMachineCard lessonId={lessonId} step={step} busy={busy} onContinue={() => onContinue({ message: '完成' })} />;
+
     case 'jyutpingInput':
-      return <JyutpingInputCard step={step} onContinue={onContinue} />;
+      return <JyutpingInputCard step={step} busy={busy} onResolve={onContinue} />;
+
     case 'quizItem':
       return (
         <ChoiceStep
-          title={step.title}
-          eyebrow="Quiz"
-          prompt={step.question}
+          heading={step.question}
           choices={step.choices}
           correctChoiceId={step.correctChoiceId}
-          explanation={step.explanation}
           glossaryIds={step.glossaryIds}
-          continueLabel={continueLabel}
-          onContinue={onContinue}
+          busy={busy}
+          onResolve={(payload) => onContinue({ ...payload, message: mode === 'quiz' ? '答對' : payload.message })}
         />
       );
+
     case 'dialogue':
-      return <DialogueCard step={step} onContinue={() => onContinue()} />;
+      return <DialogueCard step={step} busy={busy} onResolve={onContinue} />;
+
+    case 'learnCard':
+      return (
+        <StepFrame heading={step.front.heading} glossaryIds={step.glossaryIds}>
+          <p>{text(step.front.body)}</p>
+          <div className="step-card__footer">
+            <button type="button" className="button button--primary" onClick={() => onContinue({ message: '完成' })} disabled={busy}>
+              {text('完成本步')}
+            </button>
+          </div>
+        </StepFrame>
+      );
+
     default:
       return null;
   }

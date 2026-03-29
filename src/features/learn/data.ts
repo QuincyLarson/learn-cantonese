@@ -107,7 +107,35 @@ export function getSectionCompletion(sectionId: string, completedLessonIds: stri
   return completedCount / sectionLessons.length;
 }
 
+export function getNextLessonForSection(sectionId: string, completedLessonIds: string[]): Lesson | undefined {
+  const sectionLessons = getLessonsForSection(sectionId);
+  return sectionLessons.find((lesson) => !completedLessonIds.includes(lesson.id)) ?? sectionLessons[0];
+}
+
+export function getNextLessonForApp(completedLessonIds: string[]): Lesson | undefined {
+  return lessons.find((lesson) => !completedLessonIds.includes(lesson.id)) ?? lessons[0];
+}
+
+export function getSectionStatus(
+  sectionId: string,
+  completedLessonIds: string[],
+  reviewLaterIds: string[] = [],
+): 'new' | 'active' | 'done' {
+  const sectionLessons = getLessonsForSection(sectionId);
+  const completedCount = sectionLessons.filter((lesson) => completedLessonIds.includes(lesson.id)).length;
+  const hasReviewLater = sectionLessons.some((lesson) => reviewLaterIds.includes(lesson.id));
+
+  if (completedCount === 0 && !hasReviewLater) {
+    return 'new';
+  }
+
+  if (completedCount === sectionLessons.length) {
+    return 'done';
+  }
+
+  return 'active';
+}
+
 export function getArcadeActivities() {
   return [...content.arcades];
 }
-

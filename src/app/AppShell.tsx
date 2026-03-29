@@ -1,6 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
-import { LandingPage } from '@/features/home/LandingPage';
 import { PlaceholderPage } from '@/components/PlaceholderPage';
 import { LearnMapPage } from '@/features/learn/LearnMapPage';
 import { SectionPage } from '@/features/learn/SectionPage';
@@ -13,7 +12,7 @@ export function AppShell() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<LearnMapPage />} />
         <Route path="/learn" element={<LearnMapPage />} />
         <Route path="/learn/section/:sectionId" element={<SectionPage />} />
         <Route path="/learn/section/:sectionId/quiz" element={<SectionQuizPage />} />

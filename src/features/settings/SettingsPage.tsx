@@ -114,7 +114,7 @@ function statSummary(appState: AppState): Array<{ label: string; value: string }
     { label: '待複習項目', value: String(reviewLaterCount) },
     { label: '測驗通過', value: `${successfulQuizzes}/${quizEntries.length}` },
     { label: '測驗平均分', value: formatPercent(averageQuizScore) },
-    { label: '街機遊玩', value: String(gamesPlayed) },
+    { label: '快練次數', value: String(gamesPlayed) },
     { label: '最佳連勝', value: String(progress.arcadeStats.bestStreak) },
   ];
 }
@@ -129,14 +129,14 @@ export function SettingsPage(): JSX.Element {
   const stats = statSummary(appState);
 
   function handleExportClick(): void {
-    downloadJson('standard-cantonese-progress.json', exportAppStateJson(appState));
+    downloadJson('粵語課程進度.json', exportAppStateJson(appState));
     setStatusMessage(text('進度已匯出。'));
     setErrorMessage(null);
   }
 
   function handleImportClick(): void {
     if (!tryImportAppState(importText)) {
-      setErrorMessage(text('匯入失敗：JSON 格式不正確。'));
+      setErrorMessage(text('匯入失敗：進度檔格式不正確。'));
       setStatusMessage(null);
       return;
     }
@@ -157,7 +157,7 @@ export function SettingsPage(): JSX.Element {
       .text()
       .then((fileText) => {
         if (!tryImportAppState(fileText)) {
-          setErrorMessage(text('檔案無法讀取為有效的進度 JSON。'));
+          setErrorMessage(text('檔案無法讀取為有效的進度檔。'));
           setStatusMessage(null);
           return;
         }
@@ -239,24 +239,24 @@ export function SettingsPage(): JSX.Element {
               {text('資料匯入與匯出')}
             </h2>
             <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('匯出的 JSON 會包含完成課程、測驗分數、複習標記、街機統計與設定。')}
+              {text('匯出的進度檔會包含完成課程、測驗分數、複習標記、快練統計與設定。')}
             </p>
             <div style={actionRowStyle}>
               <button type="button" className="button button--secondary" onClick={handleExportClick}>
-                {text('匯出 JSON')}
+                {text('匯出進度檔')}
               </button>
               <label style={{ display: 'grid', gap: '0.375rem' }}>
-                <span>{text('匯入 JSON 檔案')}</span>
+                <span>{text('匯入進度檔')}</span>
                 <input type="file" accept="application/json,.json" onChange={handleFileChange} />
               </label>
             </div>
             <label style={{ display: 'grid', gap: '0.5rem' }}>
-              <span>{text('貼上 JSON 內容')}</span>
+              <span>{text('貼上進度內容')}</span>
               <textarea
                 value={importText}
                 onChange={(event) => setImportText(event.target.value)}
                 style={inputStyle}
-                placeholder={text('貼上先前匯出的 JSON，然後按「匯入貼上內容」。')}
+                placeholder={text('貼上先前匯出的進度內容，然後按「匯入貼上內容」。')}
               />
             </label>
             <div style={actionRowStyle}>

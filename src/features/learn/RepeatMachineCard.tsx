@@ -9,12 +9,13 @@ import { useScriptText } from '@/lib/script';
 type RepeatMachineCardProps = {
   lessonId: string;
   step: RepeatMachineStep;
+  busy?: boolean;
   onContinue: () => void;
 };
 
 type RecordingState = 'idle' | 'recording' | 'recorded' | 'playing-back';
 
-export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineCardProps) {
+export function RepeatMachineCard({ lessonId, step, busy = false, onContinue }: RepeatMachineCardProps) {
   const { scriptPreference } = useSettingsState();
   const progress = useProgressState();
   const text = useScriptText(scriptPreference);
@@ -107,13 +108,12 @@ export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineC
     recorded: text('已錄好'),
     'playing-back': text('播放錄音中'),
   }[recordingState];
+  const readyToContinue = Boolean(rating) && (Boolean(recordingUrl) || Boolean(error));
 
   return (
     <section className="step-card">
       <header className="step-card__header">
-        <p className="eyebrow">{text('Repeat Machine')}</p>
-        <h2>{text(step.title)}</h2>
-        <p>{text(step.prompt)}</p>
+        <h2>{text(step.prompt)}</h2>
       </header>
 
       <div className="repeat-machine">
@@ -123,40 +123,36 @@ export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineC
         </div>
 
         <div className="repeat-machine__actions">
-          <AudioButton asset={targetAudio} label={text('播放原音')} loop={loopEnabled} />
-          <button type="button" className="button button--secondary" onClick={beginRecording} disabled={recordingState === 'recording'}>
-            {text('開始錄音')}
+          <AudioButton asset={targetAudio} label={text('聽原音')} compact loop={loopEnabled} />
+          <button type="button" className="button button--secondary" onClick={beginRecording} disabled={busy || recordingState === 'recording'}>
+            {text('錄音')}
           </button>
-          <button type="button" className="button button--secondary" onClick={stopRecording} disabled={recordingState !== 'recording'}>
-            {text('停止錄音')}
+          <button type="button" className="button button--secondary" onClick={stopRecording} disabled={busy || recordingState !== 'recording'}>
+            {text('停止')}
           </button>
-          <button type="button" className="button button--secondary" onClick={playRecording} disabled={!recordingUrl}>
-            {text('播放我的錄音')}
+          <button type="button" className="button button--secondary" onClick={playRecording} disabled={busy || !recordingUrl}>
+            {text('聽我')}
           </button>
-          <AudioButton asset={targetAudio} label={text('再播一次原音')} />
+          <AudioButton asset={targetAudio} label={text('再聽原音')} compact />
         </div>
 
         <div className="repeat-machine__compare">
           <p>
-            <strong>{text('目標音節')}</strong> {step.transcript}
+            <strong>{text('目標')}</strong> {step.transcript}
           </p>
           <label className="checkbox-row">
             <input
               type="checkbox"
               checked={loopEnabled}
               onChange={(event) => setLoopEnabled(event.target.checked)}
+              disabled={busy}
             />
-            <span>{text('建議重播模式')}</span>
+            <span>{text('循環播放')}</span>
           </label>
-          <p className="muted-text">
-            {loopEnabled
-              ? text('現在可反覆切換原音與自己的錄音，做 A/B 比對。')
-              : text('如想多練幾次，可打開建議重播模式。')}
-          </p>
         </div>
 
         <div className="repeat-machine__rating">
-          <strong>{text('你自己覺得今次點？')}</strong>
+          <strong>{text('自評')}</strong>
           <div className="choice-grid">
             {step.selfRatingLabels.map((label) => (
               <button
@@ -164,6 +160,7 @@ export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineC
                 type="button"
                 className={rating === label ? 'choice-button is-selected' : 'choice-button'}
                 onClick={() => setRating(label)}
+                disabled={busy}
               >
                 {text(label)}
               </button>
@@ -176,6 +173,7 @@ export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineC
             type="button"
             className={reviewLater ? 'button button--secondary is-flagged' : 'button button--secondary'}
             onClick={() => toggleReviewLater(lessonId)}
+            disabled={busy}
           >
             {reviewLater ? text('已加入稍後複習') : text('加入稍後複習')}
           </button>
@@ -185,8 +183,8 @@ export function RepeatMachineCard({ lessonId, step, onContinue }: RepeatMachineC
       </div>
 
       <footer className="step-card__footer">
-        <button type="button" className="button button--primary" onClick={onContinue}>
-          {text('下一步')}
+        <button type="button" className="button button--primary" onClick={onContinue} disabled={busy || !readyToContinue}>
+          {text('完成')}
         </button>
       </footer>
     </section>

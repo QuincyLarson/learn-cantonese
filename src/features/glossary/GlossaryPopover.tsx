@@ -40,7 +40,7 @@ export function GlossaryPopover({ entry }: GlossaryPopoverProps) {
             <strong>{convertText(entry.headword, 'simplified')}</strong>
           </div>
           <div className="glossary-popover__row">
-            <span className="eyebrow">Jyutping</span>
+            <span className="eyebrow">粵拼</span>
             <strong>{entry.jyutping}</strong>
           </div>
           <div className="glossary-popover__row">

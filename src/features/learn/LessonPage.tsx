@@ -20,5 +20,5 @@ export function LessonPage() {
     );
   }
 
-  return <LessonPlayer lesson={lesson} />;
+  return <LessonPlayer key={lesson.id} lesson={lesson} />;
 }

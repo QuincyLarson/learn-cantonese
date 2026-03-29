@@ -7,11 +7,19 @@ type AudioButtonProps = {
   asset?: AudioAsset;
   label?: string;
   compact?: boolean;
+  onPlay?: () => void;
   onEnded?: () => void;
   loop?: boolean;
 };
 
-export function AudioButton({ asset, label, compact = false, onEnded, loop = false }: AudioButtonProps) {
+export function AudioButton({
+  asset,
+  label,
+  compact = false,
+  onPlay,
+  onEnded,
+  loop = false,
+}: AudioButtonProps) {
   const { playbackSpeed } = useSettingsState();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [state, setState] = useState<'idle' | 'playing' | 'error'>('idle');
@@ -34,6 +42,8 @@ export function AudioButton({ asset, label, compact = false, onEnded, loop = fal
   const playbackLabel = label ?? `播放 ${asset.label}`;
 
   const handlePlay = async () => {
+    onPlay?.();
+
     if (audioRef.current && state === 'playing') {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;

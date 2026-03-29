@@ -25,13 +25,13 @@ export function SettingsOnboardingCallout(): JSX.Element | null {
 
   return (
     <aside style={cardStyle} aria-label={text('首次使用提示')}>
-      <strong>{text('先看這裡')}</strong>
+      <strong>{text('先選字體')}</strong>
       <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-        {text('右上角的字體切換會影響整個網站。你可以先用繁體閱讀教材，需要時再切到簡體。')}
+        {text('右上角可切換繁體或簡體，整站都會一起切換。')}
       </p>
       <div>
         <button type="button" onClick={() => dismissCallout({ calloutId: SCRIPT_TOGGLE_CALLOUT_ID })}>
-          {text('我知道了')}
+          {text('知道了')}
         </button>
       </div>
     </aside>

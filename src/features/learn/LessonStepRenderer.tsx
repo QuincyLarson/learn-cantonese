@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  CommonCharacterEntry,
+  CommonStructureEntry,
   DialogueStep,
   FillBlankStep,
   JyutpingInputStep,
@@ -13,6 +15,8 @@ import { GlossaryPopover } from '@/features/glossary/GlossaryPopover';
 import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
 import { getAudioAsset, getGlossaryEntries } from '@/features/learn/data';
+import { searchCommonCharactersByJyutpingPrefix } from '@/features/learn/commonCharacters';
+import { searchCommonStructuresByJyutpingPrefix } from '@/features/learn/commonStructures';
 import { RepeatMachineCard } from '@/features/learn/RepeatMachineCard';
 
 export type StepContinuePayload = {
@@ -336,6 +340,13 @@ function normalizeJyutpingInput(input: string) {
   return input.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+const commonStructureKindLabel: Record<CommonStructureEntry['kind'], string> = {
+  pair: '雙字詞',
+  phrase: '常用詞組',
+  idiom: '成語',
+  yanyu: '熟語',
+};
+
 function JyutpingInputCard({
   step,
   busy,
@@ -350,6 +361,8 @@ function JyutpingInputCard({
   const [value, setValue] = useState('');
   const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [commonCharacterSuggestions, setCommonCharacterSuggestions] = useState<CommonCharacterEntry[]>([]);
+  const [commonStructureSuggestions, setCommonStructureSuggestions] = useState<CommonStructureEntry[]>([]);
 
   const normalizedValue = normalizeJyutpingInput(value);
   const targetValue = normalizeJyutpingInput(step.targetTokens.join(' '));
@@ -360,6 +373,77 @@ function JyutpingInputCard({
   const matchingPhrases = (step.phraseSuggestions ?? []).filter(
     (phrase) => normalizedValue && normalizeJyutpingInput(phrase.input) === normalizedValue,
   );
+  const exactSuggestionKeys = exactSuggestions.map((suggestion) => `${suggestion.displayText}:${suggestion.jyutping}`).join('|');
+  const curatedPhraseKeys = (step.phraseSuggestions ?? [])
+    .map((phrase) => `${phrase.displayText}:${normalizeJyutpingInput(phrase.input)}`)
+    .join('|');
+
+  useEffect(() => {
+    let active = true;
+
+    if (!activeToken) {
+      setCommonCharacterSuggestions([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    void searchCommonCharactersByJyutpingPrefix(activeToken, 12)
+      .then((entries) => {
+        if (!active) {
+          return;
+        }
+
+        setCommonCharacterSuggestions(
+          entries.filter((entry) => (
+            !exactSuggestions.some((suggestion) => suggestion.displayText === entry.character && suggestion.jyutping === entry.jyutping)
+          )),
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setCommonCharacterSuggestions([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeToken, exactSuggestionKeys]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!normalizedValue) {
+      setCommonStructureSuggestions([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    void searchCommonStructuresByJyutpingPrefix(normalizedValue, 10)
+      .then((entries) => {
+        if (!active) {
+          return;
+        }
+
+        setCommonStructureSuggestions(
+          entries.filter((entry) => (
+            !exactSuggestions.some((suggestion) => suggestion.displayText === entry.text) &&
+            !(step.phraseSuggestions ?? []).some((phrase) => phrase.displayText === entry.text)
+          )),
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setCommonStructureSuggestions([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [normalizedValue, exactSuggestionKeys, curatedPhraseKeys, step.phraseSuggestions]);
 
   const handleSubmit = () => {
     if (busy) {
@@ -404,26 +488,61 @@ function JyutpingInputCard({
       </label>
 
       {exactSuggestions.length > 0 ? (
-        <div className="suggestion-grid">
-          {exactSuggestions.map((suggestion) => (
-            <article key={`${suggestion.token}-${suggestion.displayText}`} className="surface-card">
-              <strong>{text(suggestion.displayText)}</strong>
-              <span className="muted-text">{suggestion.jyutping}</span>
-              {suggestion.note ? <span className="muted-text">{text(suggestion.note)}</span> : null}
-            </article>
-          ))}
+        <div className="step-card__media">
+          <span className="muted-text">{text('本課提示')}</span>
+          <div className="suggestion-grid">
+            {exactSuggestions.map((suggestion) => (
+              <article key={`${suggestion.token}-${suggestion.displayText}`} className="surface-card">
+                <strong>{text(suggestion.displayText)}</strong>
+                <span className="muted-text">{suggestion.jyutping}</span>
+                {suggestion.note ? <span className="muted-text">{text(suggestion.note)}</span> : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {commonCharacterSuggestions.length > 0 ? (
+        <div className="step-card__media">
+          <span className="muted-text">{text('常用單字')}</span>
+          <div className="suggestion-grid">
+            {commonCharacterSuggestions.map((entry) => (
+              <article key={entry.id} className="surface-card">
+                <strong>{text(entry.character)}</strong>
+                <span className="muted-text">{entry.jyutping}</span>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {commonStructureSuggestions.length > 0 ? (
+        <div className="step-card__media">
+          <span className="muted-text">{text('常用搭配')}</span>
+          <div className="suggestion-grid">
+            {commonStructureSuggestions.map((entry) => (
+              <article key={entry.id} className="surface-card">
+                <strong>{text(entry.text)}</strong>
+                <span className="muted-text">{entry.jyutping}</span>
+                <span className="muted-text">{text(commonStructureKindLabel[entry.kind])}</span>
+              </article>
+            ))}
+          </div>
         </div>
       ) : null}
 
       {matchingPhrases.length > 0 ? (
-        <div className="suggestion-grid">
-          {matchingPhrases.map((phrase) => (
-            <article key={phrase.input} className="surface-card">
-              <strong>{text(phrase.displayText)}</strong>
-              <span className="muted-text">{normalizeJyutpingInput(phrase.input)}</span>
-              {phrase.note ? <span className="muted-text">{text(phrase.note)}</span> : null}
-            </article>
-          ))}
+        <div className="step-card__media">
+          <span className="muted-text">{text('整句提示')}</span>
+          <div className="suggestion-grid">
+            {matchingPhrases.map((phrase) => (
+              <article key={phrase.input} className="surface-card">
+                <strong>{text(phrase.displayText)}</strong>
+                <span className="muted-text">{normalizeJyutpingInput(phrase.input)}</span>
+                {phrase.note ? <span className="muted-text">{text(phrase.note)}</span> : null}
+              </article>
+            ))}
+          </div>
         </div>
       ) : null}
 

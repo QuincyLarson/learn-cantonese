@@ -13,6 +13,8 @@ import {
 import type { AppState } from '../progress';
 import { PlaybackSpeedToggle, ScriptPreferenceToggle, ThemePreferenceToggle } from './PreferenceControls';
 import { SettingsOnboardingCallout } from './SettingsOnboardingCallout';
+import { COMMON_CHARACTER_COUNT } from '@/features/learn/commonCharacters';
+import { COMMON_STRUCTURE_COUNT } from '@/features/learn/commonStructures';
 import { useScriptText } from '@/lib/script';
 
 const pageStyle: CSSProperties = {
@@ -116,6 +118,8 @@ function statSummary(appState: AppState): Array<{ label: string; value: string }
     { label: '測驗平均分', value: formatPercent(averageQuizScore) },
     { label: '快練次數', value: String(gamesPlayed) },
     { label: '最佳連勝', value: String(progress.arcadeStats.bestStreak) },
+    { label: '常用字庫', value: String(COMMON_CHARACTER_COUNT) },
+    { label: '常用搭配', value: String(COMMON_STRUCTURE_COUNT) },
   ];
 }
 

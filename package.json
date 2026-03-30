@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:characters": "node scripts/generate-common-characters.mjs",
+    "generate:structures": "node scripts/generate-common-structures.mjs",
+    "generate:vocabulary": "npm run generate:characters && npm run generate:structures",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
@@ -19,6 +22,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "hanzi": "^2.1.5",
+    "to-jyutping": "^3.1.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.1"
   }

@@ -234,6 +234,27 @@ export type GlossaryEntry = {
   tags?: readonly string[];
 };
 
+export type CommonCharacterEntry = {
+  id: string;
+  rank: number;
+  character: string;
+  simplified: string;
+  jyutping: string;
+  jyutpingCandidates: readonly string[];
+};
+
+export type CommonStructureKind = "pair" | "phrase" | "idiom" | "yanyu";
+
+export type CommonStructureEntry = {
+  id: string;
+  rank: number;
+  text: string;
+  simplified: string;
+  jyutping: string;
+  kind: CommonStructureKind;
+  frequencyScore: number;
+};
+
 export type AudioAsset = {
   id: string;
   speakerId: string;

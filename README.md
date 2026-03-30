@@ -42,6 +42,12 @@ The content layer should stay stable and scalable:
   - Maps stable ids to static asset paths
   - Includes speaker identity where relevant
   - Allows the UI to degrade gracefully when an asset is missing
+- `commonCharacters`
+  - Bundled 5k single-character Jyutping dataset
+  - Lazy-loaded so the initial lesson bundle stays small
+- `commonStructures`
+  - Bundled 10k common pairs, phrases, idioms, and sayings
+  - Generated from local frequency + dictionary data and lazy-loaded at runtime
 
 Keep content in Chinese for v1. Author lesson copy in Traditional Chinese and convert for display at runtime.
 
@@ -60,6 +66,29 @@ Guidelines for new A1 content:
 - Keep explanations practical and adult-facing
 - Use one canonical Cantonese answer per exercise
 - Avoid variant clutter and avoid non-course topics
+
+## Vocabulary Corpora
+
+The app now ships two static helper corpora for autocomplete and recognition support:
+
+- `src/content/commonCharacters.ts`
+  - 5,000 high-frequency single characters with canonical Jyutping and alternate readings
+- `src/content/commonStructures.ts`
+  - 10,000 high-frequency structures built from the same 5k character band
+  - Mix of two-character words, short phrases, idioms, and a small sayings bucket
+
+Generation commands:
+
+1. `npm run generate:characters`
+2. `npm run generate:structures`
+3. `npm run generate:vocabulary`
+
+Source notes:
+
+- Character ranking comes from the bundled `hanzi` frequency list
+- Multi-character structure ranking comes from `hanzi`'s bundled Leiden frequency data plus CC-CEDICT matches
+- Jyutping is generated with `to-jyutping`
+- The generators deliberately filter out obvious proper nouns, political/history/religious content, and noisy dictionary variants so the shipped data stays learner-facing
 
 ## Audio Assets
 

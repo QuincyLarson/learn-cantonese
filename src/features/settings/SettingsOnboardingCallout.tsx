@@ -7,9 +7,9 @@ export const SCRIPT_TOGGLE_CALLOUT_ID = 'script-toggle-first-visit';
 
 const cardStyle: CSSProperties = {
   border: '1px solid var(--settings-border, #d6d8de)',
-  borderRadius: '1rem',
+  borderRadius: 0,
   padding: '1rem',
-  background: 'linear-gradient(180deg, var(--settings-callout, #f6faf9), var(--settings-surface, #ffffff))',
+  background: 'var(--settings-callout, #f6faf9)',
   display: 'grid',
   gap: '0.75rem',
 };
@@ -30,7 +30,11 @@ export function SettingsOnboardingCallout(): JSX.Element | null {
         {text('右上角可切換繁體或簡體，整站都會一起切換。')}
       </p>
       <div>
-        <button type="button" onClick={() => dismissCallout({ calloutId: SCRIPT_TOGGLE_CALLOUT_ID })}>
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={() => dismissCallout({ calloutId: SCRIPT_TOGGLE_CALLOUT_ID })}
+        >
           {text('知道了')}
         </button>
       </div>

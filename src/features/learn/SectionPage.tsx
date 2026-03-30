@@ -23,6 +23,7 @@ export function SectionPage() {
   const lessons = getLessonsForSection(section.id);
   const nextLesson = getNextLessonForSection(section.id, progress.completedLessonIds);
   const status = getSectionStatus(section.id, progress.completedLessonIds, progress.reviewLaterIds);
+  const completedCount = lessons.filter((lesson) => progress.completedLessonIds.includes(lesson.id)).length;
 
   return (
     <div className="page-stack">
@@ -31,31 +32,46 @@ export function SectionPage() {
           <h1>{text(section.title)}</h1>
           <p>{text(section.summary)}</p>
         </div>
-        {nextLesson ? (
-          <Link className="button button--primary" to={`/learn/lesson/${nextLesson.id}`}>
-            {status === 'new' ? text('開始本章') : status === 'active' ? text('繼續本章') : text('重練本章')}
-          </Link>
-        ) : null}
+        <div className="curriculum-head__meta">
+          <span className="progress-pill">
+            {completedCount}/{lessons.length}
+          </span>
+          {nextLesson ? (
+            <Link className="button button--primary" to={`/learn/lesson/${nextLesson.id}`}>
+              {status === 'new' ? text('開始本章') : status === 'active' ? text('繼續本章') : text('重練本章')}
+            </Link>
+          ) : null}
+        </div>
       </section>
 
       <section className="lesson-list lesson-list--compact">
         {lessons.map((lesson) => {
           const complete = progress.completedLessonIds.includes(lesson.id);
           const reviewLater = progress.reviewLaterIds.includes(lesson.id);
+          const current = nextLesson?.id === lesson.id;
 
           return (
-            <article key={lesson.id} className="lesson-list__item">
-              <div>
-                <h2>{text(lesson.title)}</h2>
-                <p>{text(lesson.summary)}</p>
+            <article
+              key={lesson.id}
+              className={`lesson-list__item${complete ? ' is-complete' : ''}${reviewLater ? ' is-flagged' : ''}${current ? ' is-current' : ''}`}
+            >
+              <div className="lesson-list__rail" aria-hidden="true">
+                <span className="lesson-list__index">{String(lesson.order).padStart(2, '0')}</span>
               </div>
-              <div className="lesson-list__actions">
-                <span className={complete ? 'progress-pill is-complete' : reviewLater ? 'progress-pill is-flagged' : 'progress-pill'}>
-                  {complete ? text('已完成') : reviewLater ? text('待複習') : text('未開始')}
-                </span>
-                <Link className="button button--secondary" to={`/learn/lesson/${lesson.id}`}>
-                  {complete ? text('重練') : text('進入')}
-                </Link>
+
+              <div className="lesson-list__body">
+                <div className="lesson-list__copy">
+                  <h2>{text(lesson.title)}</h2>
+                  <p>{text(lesson.summary)}</p>
+                </div>
+                <div className="lesson-list__actions">
+                  <span className={complete ? 'progress-pill is-complete' : reviewLater ? 'progress-pill is-flagged' : current ? 'progress-pill is-current' : 'progress-pill'}>
+                    {complete ? text('已完成') : reviewLater ? text('待複習') : current ? text('下一課') : text('未開始')}
+                  </span>
+                  <Link className="button button--secondary" to={`/learn/lesson/${lesson.id}`}>
+                    {complete ? text('重練') : text('進入')}
+                  </Link>
+                </div>
               </div>
             </article>
           );

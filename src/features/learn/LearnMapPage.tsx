@@ -48,36 +48,47 @@ export function LearnMapPage() {
                 : text('重練本章');
 
           return (
-            <article key={section.id} className="section-card">
-              <header className="section-card__header">
-                <div>
-                  <h2>{text(section.title)}</h2>
-                  <p>{text(section.summary)}</p>
-                </div>
-                <span className="section-card__progress">
-                  {completedCount}/{lessons.length}
-                </span>
-              </header>
+            <article key={section.id} className={`section-card is-${status}`}>
+              <div className="section-card__rail" aria-hidden="true">
+                <span className="section-card__index">{String(section.order).padStart(2, '0')}</span>
+              </div>
 
-              <ul className="section-card__lessons">
-                {lessons.map((lesson) => (
-                  <li key={lesson.id} className="section-card__lesson">
-                    <span className="section-card__lesson-mark" aria-hidden="true">
-                      {progress.completedLessonIds.includes(lesson.id) ? '✓' : '•'}
+              <div className="section-card__body">
+                <header className="section-card__header">
+                  <div className="section-card__heading">
+                    <span className="section-card__eyebrow">
+                      {status === 'done' ? text('已完成') : status === 'active' ? text('進行中') : text('未開始')}
                     </span>
-                    <span className="section-card__lesson-title">{text(lesson.title)}</span>
-                    <span className="section-card__lesson-summary">{text(lesson.summary)}</span>
-                  </li>
-                ))}
-              </ul>
+                    <h2>{text(section.title)}</h2>
+                    <p>{text(section.summary)}</p>
+                  </div>
+                  <span className="section-card__progress">
+                    {completedCount}/{lessons.length}
+                  </span>
+                </header>
 
-              {sectionNextLesson ? (
-                <div className="section-card__footer">
-                  <Link className="button button--primary" to={`/learn/lesson/${sectionNextLesson.id}`}>
-                    {buttonLabel}
-                  </Link>
-                </div>
-              ) : null}
+                <ul className="section-card__lessons">
+                  {lessons.map((lesson) => (
+                    <li key={lesson.id} className="section-card__lesson">
+                      <span className="section-card__lesson-mark" aria-hidden="true">
+                        {progress.completedLessonIds.includes(lesson.id) ? '✓' : String(lesson.order).padStart(2, '0')}
+                      </span>
+                      <span className="section-card__lesson-line">
+                        <span className="section-card__lesson-title">{text(lesson.title)}</span>
+                        <span className="section-card__lesson-summary">{text(lesson.summary)}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {sectionNextLesson ? (
+                  <div className="section-card__footer">
+                    <Link className="button button--primary" to={`/learn/lesson/${sectionNextLesson.id}`}>
+                      {buttonLabel}
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             </article>
           );
         })}

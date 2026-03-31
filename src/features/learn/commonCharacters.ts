@@ -15,6 +15,10 @@ async function loadCommonCharacters(): Promise<CommonCharacterEntry[]> {
   return cachedEntries;
 }
 
+export async function getCommonCharacterEntries(): Promise<CommonCharacterEntry[]> {
+  return loadCommonCharacters();
+}
+
 function getByGlyph(entries: readonly CommonCharacterEntry[]) {
   if (cachedByGlyph) {
     return cachedByGlyph;

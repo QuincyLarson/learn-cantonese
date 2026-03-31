@@ -1,251 +1,53 @@
-import { useEffect, useRef, useState } from 'react';
-import { AudioButton } from '@/features/audio/AudioButton';
-import { getArcadeActivities, getAudioAsset } from '@/features/learn/data';
-import {
-  recordArcadeSession,
-  useProgressState,
-  useSettingsState,
-} from '@/features/progress';
+import { useMemo, useState } from 'react';
+import { getArcadeActivities } from '@/features/learn/data';
+import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
-
-function shuffle<T>(items: readonly T[]): T[] {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
-  }
-  return copy;
-}
+import { JyutpingFlashcardPanel } from '@/features/arcade/JyutpingFlashcardPanel';
+import { ToneSprintPanel } from '@/features/arcade/ToneSprintPanel';
 
 export function ArcadePage() {
-  const activity = getArcadeActivities()[0];
-  const progress = useProgressState();
   const { scriptPreference } = useSettingsState();
   const text = useScriptText(scriptPreference);
-  const timerRef = useRef<number | null>(null);
-  const roundAdvanceRef = useRef<number | null>(null);
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(60);
-  const [correct, setCorrect] = useState(0);
-  const [incorrect, setIncorrect] = useState(0);
-  const [bestLocalStreak, setBestLocalStreak] = useState(0);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [choices, setChoices] = useState<string[]>([]);
-  const [finished, setFinished] = useState(false);
-  const [flashMessage, setFlashMessage] = useState<string | null>(null);
+  const activities = getArcadeActivities();
+  const defaultActivityId = useMemo(
+    () => activities.find((item) => item.mode === 'jyutpingFlashcards')?.id ?? activities[0]?.id ?? '',
+    [activities],
+  );
+  const [selectedActivityId, setSelectedActivityId] = useState(defaultActivityId);
+  const activity = activities.find((item) => item.id === selectedActivityId) ?? activities[0];
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearInterval(timerRef.current);
-      }
-      if (roundAdvanceRef.current !== null) {
-        window.clearTimeout(roundAdvanceRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (finished) {
-      return;
-    }
-
-    timerRef.current = window.setInterval(() => {
-      setSecondsLeft((current) => {
-        if (current <= 1) {
-          if (timerRef.current !== null) {
-            window.clearInterval(timerRef.current);
-          }
-          if (roundAdvanceRef.current !== null) {
-            window.clearTimeout(roundAdvanceRef.current);
-          }
-          setFinished(true);
-          setFlashMessage(null);
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearInterval(timerRef.current);
-      }
-    };
-  }, [finished]);
-
-  useEffect(() => {
-    if (!finished || !activity) {
-      return;
-    }
-
-    const answered = correct + incorrect;
-    const score = answered ? Math.round((correct / answered) * 100) : 0;
-    recordArcadeSession({
-      gameId: activity.id,
-      score,
-      correct,
-      incorrect,
-      streak: bestLocalStreak,
-      won: score >= 80,
-    });
-  }, [activity, bestLocalStreak, correct, finished, incorrect]);
-
-  const prompt = activity ? activity.warmupPrompts[roundIndex % activity.warmupPrompts.length] : undefined;
-
-  useEffect(() => {
-    if (!prompt) {
-      setChoices([]);
-      return;
-    }
-
-    setChoices(shuffle([prompt.correctAnswer, ...prompt.wrongAnswers]));
-  }, [prompt, roundIndex]);
-
-  if (!activity || !prompt) {
+  if (!activity) {
     return null;
   }
 
-  const answered = selected !== null;
-  const stats = progress.arcadeStats.games[activity.id];
-
-  const resetSession = () => {
-    if (roundAdvanceRef.current !== null) {
-      window.clearTimeout(roundAdvanceRef.current);
-    }
-    setRoundIndex(0);
-    setSecondsLeft(60);
-    setCorrect(0);
-    setIncorrect(0);
-    setBestLocalStreak(0);
-    setCurrentStreak(0);
-    setSelected(null);
-    setFlashMessage(null);
-    setFinished(false);
-  };
-
-  if (finished) {
-    const answeredCount = correct + incorrect;
-    const score = answeredCount ? Math.round((correct / answeredCount) * 100) : 0;
-
-    return (
-      <section className="arcade-panel arcade-panel--result">
-        <header className="arcade-panel__header arcade-panel__header--stack">
-          <div>
-            <h1>{text(activity.title)}</h1>
-            <p>{text('一輪完成。')}</p>
-          </div>
-        </header>
-
-        <div className="arcade-panel__stats arcade-panel__stats--result">
-          <span className="progress-pill">{text('答對')} {correct}</span>
-          <span className="progress-pill">{text('答錯')} {incorrect}</span>
-          <span className="progress-pill">{text('得分')} {score}%</span>
-          <span className="progress-pill">{text('本輪最高連勝')} {bestLocalStreak}</span>
-          <span className="progress-pill">{text('歷史最高分')} {stats?.bestScore ?? 0}%</span>
-        </div>
-
-        <div className="arcade-panel__footer">
-          <button
-            type="button"
-            className="button button--primary"
-            onClick={resetSession}
-          >
-            {text('再來一輪')}
-          </button>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <div className="arcade-page">
-      {flashMessage ? (
-        <div className="floating-signal" role="status" aria-live="polite">
-          {text(flashMessage)}
+    <div className="page-stack">
+      <section className="curriculum-head">
+        <div className="curriculum-head__copy">
+          <h1>{text('快練')}</h1>
+          <p>{text('選一種玩法，集中練耳朵或者見字打音。')}</p>
         </div>
-      ) : null}
-
-      <section className="arcade-panel">
-        <header className="arcade-panel__header">
-          <div>
-            <h1>{text(activity.title)}</h1>
-            <p>{text('六十秒快練。')}</p>
-          </div>
-
-          <div className="arcade-panel__stats">
-            <span className="progress-pill">{secondsLeft} {text('秒')}</span>
-            <span className="progress-pill">{text('連勝')} {currentStreak}</span>
-            <span className="progress-pill">{text('最高')} {bestLocalStreak}</span>
-          </div>
-        </header>
-
-        <div className="arcade-panel__body">
-          <div className="arcade-panel__prompt">
-            <AudioButton asset={getAudioAsset(prompt.audioId)} label={text('播放')} compact />
-            <strong>{text(prompt.prompt)}</strong>
-          </div>
-
-          <div className="choice-grid choice-grid--compact">
-            {choices.map((choice) => {
-              const correctChoice = choice === prompt.correctAnswer;
-              const selectedChoice = selected === choice;
-              const className =
-                selectedChoice
-                  ? correctChoice
-                    ? 'choice-button is-correct'
-                    : 'choice-button is-wrong'
-                  : answered && correctChoice
-                    ? 'choice-button is-correct'
-                    : 'choice-button';
-
-              return (
-                <button
-                  key={choice}
-                  type="button"
-                  className={className}
-                  onClick={() => {
-                    if (answered) {
-                      return;
-                    }
-
-                    setSelected(choice);
-
-                    if (correctChoice) {
-                      setCorrect((current) => current + 1);
-                      setCurrentStreak((current) => {
-                        const next = current + 1;
-                        setBestLocalStreak((best) => Math.max(best, next));
-                        return next;
-                      });
-                      setFlashMessage('答對');
-                    } else {
-                      setIncorrect((current) => current + 1);
-                      setCurrentStreak(0);
-                      setFlashMessage('再試下一題');
-                    }
-
-                    roundAdvanceRef.current = window.setTimeout(() => {
-                      setSelected(null);
-                      setFlashMessage(null);
-                      setRoundIndex((current) => current + 1);
-                    }, 650);
-                  }}
-                >
-                  {text(choice)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <footer className="arcade-panel__footer">
-          <span>{text('答對')} {correct}</span>
-          <span>{text('答錯')} {incorrect}</span>
-          <span>{text('歷史最高')} {stats?.bestScore ?? 0}%</span>
-        </footer>
       </section>
+
+      <section className="arcade-selector" aria-label={text('快練模式')}>
+        {activities.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={item.id === activity.id ? 'arcade-selector__button is-active' : 'arcade-selector__button'}
+            onClick={() => setSelectedActivityId(item.id)}
+          >
+            <strong>{text(item.title)}</strong>
+            <span>{text(item.subtitle)}</span>
+          </button>
+        ))}
+      </section>
+
+      {activity.mode === 'jyutpingFlashcards' ? (
+        <JyutpingFlashcardPanel activity={activity} />
+      ) : (
+        <ToneSprintPanel activity={activity} />
+      )}
     </div>
   );
 }

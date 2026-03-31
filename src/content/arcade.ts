@@ -3,6 +3,17 @@ import type { ArcadeActivity } from "./types";
 
 export const arcadeActivities = [
   {
+    id: "arcade-jyutping-flashcards-a1",
+    title: "粵拼閃卡",
+    subtitle: "見字打音",
+    summary: "見到單字，打出帶調號的粵拼；唔識就跳。",
+    mode: "jyutpingFlashcards",
+    warmupPrompts: [],
+    sessionGoal: "二十張內盡量自己打出。",
+    trackedStats: ["bestStreak", "fastestClear", "lastPlayed", "aggregateCorrectRate"],
+    deckSize: 20,
+  },
+  {
     id: "arcade-tone-sprint-a1",
     title: "聲調快練",
     subtitle: "快聽快選",

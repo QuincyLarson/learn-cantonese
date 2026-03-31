@@ -284,8 +284,9 @@ export type ArcadeActivity = {
   title: string;
   subtitle: string;
   summary: string;
-  mode: "toneSprint" | "charFlash" | "signSnap" | "minimalPairBlitz";
+  mode: "toneSprint" | "charFlash" | "signSnap" | "minimalPairBlitz" | "jyutpingFlashcards";
   warmupPrompts: readonly ArcadePrompt[];
   sessionGoal: string;
   trackedStats: ReadonlyArray<"bestStreak" | "fastestClear" | "lastPlayed" | "aggregateCorrectRate">;
+  deckSize?: number;
 };

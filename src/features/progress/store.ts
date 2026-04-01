@@ -2,6 +2,7 @@ import { createDefaultAppState, isBrowser, nowIso, parseJson, PROGRESS_CHANGE_EV
 import type {
   AppState,
   ArcadeSessionInput,
+  CantoneseSentenceCompletionInput,
   CalloutDismissInput,
   LessonCompletionInput,
   PlaybackSpeed,
@@ -9,7 +10,9 @@ import type {
   ScriptPreference,
   SettingsState,
   ThemePreference,
+  VocabAttemptInput,
 } from './types';
+import { isVocabSessionExpired, projectVocabCardAfterAttempt } from '@/features/vocab/scheduler';
 
 type Listener = () => void;
 
@@ -123,6 +126,8 @@ function normalizeProgress(input: unknown): AppState['progress'] {
   }
 
   const arcadeStats = normalizeArcadeStats(input.arcadeStats);
+  const vocab = normalizeVocabProgress(input.vocab);
+  const cantoneseSentenceDrill = normalizeCantoneseSentenceDrillProgress(input.cantoneseSentenceDrill);
 
   return {
     schemaVersion: 1,
@@ -131,6 +136,8 @@ function normalizeProgress(input: unknown): AppState['progress'] {
     quizScores,
     reviewLaterIds,
     arcadeStats,
+    vocab,
+    cantoneseSentenceDrill,
     dismissedCalloutIds,
     experimentalFlags: normalizeBooleanRecord(input.experimentalFlags),
   };
@@ -180,8 +187,204 @@ function normalizeArcadeStats(value: unknown): AppState['progress']['arcadeStats
   };
 }
 
+function normalizeVocabProgress(value: unknown): AppState['progress']['vocab'] {
+  const defaultState = createDefaultAppState().progress.vocab;
+
+  if (!isObject(value)) {
+    return defaultState;
+  }
+
+  const reviewTurn = safeInt(value.reviewTurn ?? value.totalAttempts);
+
+  const characterStats: AppState['progress']['vocab']['characterStats'] = {};
+  if (isObject(value.characterStats)) {
+    for (const [characterId, entry] of Object.entries(value.characterStats)) {
+      if (!isObject(entry)) {
+        continue;
+      }
+
+      characterStats[characterId] = {
+        seenCount: safeInt(entry.seenCount),
+        correctCount: safeInt(entry.correctCount),
+        revealCount: safeInt(entry.revealCount),
+        lastSeenAt: typeof entry.lastSeenAt === 'string' ? entry.lastSeenAt : undefined,
+        masteredAt: typeof entry.masteredAt === 'string' ? entry.masteredAt : undefined,
+      };
+    }
+  }
+
+  for (const characterId of uniqueStrings(value.masteredCharacterIds)) {
+    const previous = characterStats[characterId];
+    characterStats[characterId] = {
+      seenCount: previous?.seenCount ?? 1,
+      correctCount: Math.max(previous?.correctCount ?? 0, 1),
+      revealCount: previous?.revealCount ?? 0,
+      lastSeenAt: previous?.lastSeenAt,
+      masteredAt: previous?.masteredAt ?? nowIso(),
+    };
+  }
+
+  const cardStats: AppState['progress']['vocab']['cardStats'] = {};
+  if (isObject(value.cardStats)) {
+    for (const [cardId, entry] of Object.entries(value.cardStats)) {
+      if (!isObject(entry)) {
+        continue;
+      }
+
+      const lastResult = entry.lastResult === 'correct' || entry.lastResult === 'revealed'
+        ? entry.lastResult
+        : undefined;
+      const correctCount = safeInt(entry.correctCount);
+      const revealCount = safeInt(entry.revealCount);
+      const status =
+        entry.status === 'new' || entry.status === 'learning' || entry.status === 'review'
+          ? entry.status
+          : correctCount >= 2 || typeof entry.masteryLevel === 'number' && entry.masteryLevel >= 2
+            ? 'review'
+            : correctCount > 0 || revealCount > 0
+              ? 'learning'
+              : 'new';
+      const intervalTurns = safeInt(
+        entry.intervalTurns ??
+          (correctCount >= 3
+            ? 24
+            : correctCount === 2
+              ? 12
+              : correctCount === 1
+                ? 2
+                : revealCount > 0
+                  ? 1
+                  : 0),
+      );
+      const dueTurn = safeInt(
+        entry.dueTurn ??
+          ((uniqueStrings(value.backlogCardIds ?? value.backlogItemIds).includes(cardId) || lastResult === 'revealed')
+            ? reviewTurn
+            : intervalTurns > 0
+              ? reviewTurn + intervalTurns
+              : 0),
+      );
+
+      cardStats[cardId] = {
+        seenCount: safeInt(entry.seenCount),
+        correctCount,
+        revealCount,
+        lastSeenAt: typeof entry.lastSeenAt === 'string' ? entry.lastSeenAt : undefined,
+        lastResult,
+        dueTurn,
+        intervalTurns,
+        easeFactor: safeNumber(entry.easeFactor, 2.5),
+        consecutiveCorrect: safeInt(entry.consecutiveCorrect ?? (lastResult === 'revealed' ? 0 : Math.min(correctCount, 3))),
+        masteryLevel: safeInt(entry.masteryLevel ?? (typeof entry.masteredAt === 'string' ? 3 : Math.min(correctCount, 3))),
+        status,
+      };
+    }
+  }
+
+  if (isObject(value.itemProgress)) {
+    for (const [cardId, entry] of Object.entries(value.itemProgress)) {
+      if (!isObject(entry) || cardStats[cardId]) {
+        continue;
+      }
+
+      const correctCount = safeInt(entry.correctCount);
+      const revealCount = safeInt(entry.revealCount);
+      const lastResult =
+        revealCount > correctCount
+          ? 'revealed'
+          : correctCount > 0
+            ? 'correct'
+            : undefined;
+      const status =
+        correctCount >= 2
+          ? 'review'
+          : correctCount > 0 || revealCount > 0
+            ? 'learning'
+            : 'new';
+      const intervalTurns =
+        correctCount >= 3
+          ? 24
+          : correctCount === 2
+            ? 12
+            : correctCount === 1
+              ? 2
+              : revealCount > 0
+                ? 1
+                : 0;
+
+      cardStats[cardId] = {
+        seenCount: Math.max(correctCount + revealCount, safeInt(entry.seenCount)),
+        correctCount,
+        revealCount,
+        lastSeenAt:
+          typeof entry.lastSeenAt === 'string'
+            ? entry.lastSeenAt
+            : typeof entry.lastAnsweredAt === 'string'
+              ? entry.lastAnsweredAt
+              : undefined,
+        lastResult,
+        dueTurn: status === 'learning' ? reviewTurn : reviewTurn + intervalTurns,
+        intervalTurns,
+        easeFactor: 2.5,
+        consecutiveCorrect: lastResult === 'revealed' ? 0 : Math.min(correctCount, 3),
+        masteryLevel: Math.min(correctCount, 3),
+        status,
+      };
+    }
+  }
+
+  const totalAttempts = safeInt(value.totalAttempts) || Object.values(cardStats).reduce((sum, entry) => sum + entry.seenCount, 0);
+  const totalCorrect = safeInt(value.totalCorrect) || Object.values(cardStats).reduce((sum, entry) => sum + entry.correctCount, 0);
+  const totalRevealed = safeInt(value.totalRevealed) || Object.values(cardStats).reduce((sum, entry) => sum + entry.revealCount, 0);
+  const sessionLastActivityAt = typeof value.sessionLastActivityAt === 'string' ? value.sessionLastActivityAt : undefined;
+  const sessionIsActive = !isVocabSessionExpired(sessionLastActivityAt);
+  const sessionStartedAt =
+    sessionIsActive && typeof value.sessionStartedAt === 'string'
+      ? value.sessionStartedAt
+      : undefined;
+  const sessionCorrectCardIds = sessionIsActive
+    ? uniqueStrings(value.sessionCorrectCardIds)
+    : [];
+
+  return {
+    reviewTurn: safeInt(value.reviewTurn ?? totalAttempts),
+    nextNewCardIndex: safeInt(value.nextNewCardIndex ?? value.nextItemIndex),
+    newCardsSinceReview: safeInt(value.newCardsSinceReview ?? value.newCardsSinceBacklog),
+    sessionStartedAt,
+    sessionLastActivityAt: sessionIsActive ? sessionLastActivityAt : undefined,
+    sessionCorrectCardIds,
+    totalAttempts,
+    totalCorrect,
+    totalRevealed,
+    characterStats,
+    cardStats,
+  };
+}
+
+function normalizeCantoneseSentenceDrillProgress(value: unknown): AppState['progress']['cantoneseSentenceDrill'] {
+  const defaultState = createDefaultAppState().progress.cantoneseSentenceDrill;
+
+  if (!isObject(value)) {
+    return defaultState;
+  }
+
+  const completedSentenceIds = uniqueStrings(value.completedSentenceIds);
+  const totalCompleted = safeInt(value.totalCompleted) || completedSentenceIds.length;
+
+  return {
+    nextSentenceIndex: safeInt(value.nextSentenceIndex),
+    completedSentenceIds,
+    totalCompleted,
+    lastCompletedAt: typeof value.lastCompletedAt === 'string' ? value.lastCompletedAt : undefined,
+  };
+}
+
 function safeInt(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+function safeNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 export function normalizeSettings(input: unknown): SettingsState {
@@ -433,6 +636,111 @@ export function recordArcadeSession(input: ArcadeSessionInput): AppState {
               lastPlayedAt,
             },
           },
+        },
+      },
+    };
+  });
+}
+
+export function recordVocabAttempt(input: VocabAttemptInput): AppState {
+  const cardId = input.cardId.trim();
+  const characterIds = input.characterIds
+    .map((characterId) => characterId.trim())
+    .filter((characterId) => characterId.length > 0);
+
+  if (!cardId || characterIds.length === 0) {
+    return snapshot;
+  }
+
+  return setAppState((current) => {
+    const answeredAt = nowIso();
+    const sessionExpired = isVocabSessionExpired(current.progress.vocab.sessionLastActivityAt, Date.parse(answeredAt));
+    const sessionCorrectCardIds = sessionExpired ? [] : [...current.progress.vocab.sessionCorrectCardIds];
+    const previousCardProgress = current.progress.vocab.cardStats[cardId];
+    const wasNewCard = !previousCardProgress || previousCardProgress.seenCount === 0;
+    const nextReviewTurn = current.progress.vocab.reviewTurn + 1;
+    const nextCardProgress = projectVocabCardAfterAttempt(previousCardProgress, input.result, nextReviewTurn, answeredAt);
+    const cardStats = {
+      ...current.progress.vocab.cardStats,
+      [cardId]: nextCardProgress,
+    };
+
+    if (input.result === 'correct') {
+      sessionCorrectCardIds.push(cardId);
+    }
+
+    const characterStats = { ...current.progress.vocab.characterStats };
+    for (const characterId of characterIds) {
+      const previousCharacterProgress = characterStats[characterId];
+      const correctCount = (previousCharacterProgress?.correctCount ?? 0) + (input.result === 'correct' ? 1 : 0);
+
+      characterStats[characterId] = {
+        seenCount: (previousCharacterProgress?.seenCount ?? 0) + 1,
+        correctCount,
+        revealCount: (previousCharacterProgress?.revealCount ?? 0) + (input.result === 'revealed' ? 1 : 0),
+        lastSeenAt: answeredAt,
+        masteredAt:
+          previousCharacterProgress?.masteredAt ??
+          (input.result === 'correct' && nextCardProgress.masteryLevel >= 3 ? answeredAt : undefined),
+      };
+    }
+
+    const nextNewCardIndex = wasNewCard
+      ? Math.max(
+          current.progress.vocab.nextNewCardIndex + 1,
+          safeInt(input.selectedDeckIndex ?? current.progress.vocab.nextNewCardIndex) + 1,
+        )
+      : current.progress.vocab.nextNewCardIndex;
+    const newCardsSinceReview = wasNewCard
+      ? current.progress.vocab.newCardsSinceReview + 1
+      : 0;
+
+    return {
+      ...current,
+      progress: {
+        ...current.progress,
+        vocab: {
+          reviewTurn: nextReviewTurn,
+          nextNewCardIndex,
+          newCardsSinceReview,
+          sessionStartedAt: sessionExpired ? answeredAt : current.progress.vocab.sessionStartedAt ?? answeredAt,
+          sessionLastActivityAt: answeredAt,
+          sessionCorrectCardIds: Array.from(new Set(sessionCorrectCardIds)),
+          totalAttempts: current.progress.vocab.totalAttempts + 1,
+          totalCorrect: current.progress.vocab.totalCorrect + (input.result === 'correct' ? 1 : 0),
+          totalRevealed: current.progress.vocab.totalRevealed + (input.result === 'revealed' ? 1 : 0),
+          characterStats,
+          cardStats,
+        },
+      },
+    };
+  });
+}
+
+export function recordCantoneseSentenceCompletion(input: CantoneseSentenceCompletionInput): AppState {
+  const sentenceId = input.sentenceId.trim();
+
+  if (!sentenceId) {
+    return snapshot;
+  }
+
+  return setAppState((current) => {
+    const completedSentenceIds = Array.from(
+      new Set([...current.progress.cantoneseSentenceDrill.completedSentenceIds, sentenceId]),
+    );
+
+    return {
+      ...current,
+      progress: {
+        ...current.progress,
+        cantoneseSentenceDrill: {
+          nextSentenceIndex: Math.max(
+            current.progress.cantoneseSentenceDrill.nextSentenceIndex,
+            safeInt(input.selectedSentenceIndex ?? current.progress.cantoneseSentenceDrill.nextSentenceIndex) + 1,
+          ),
+          completedSentenceIds,
+          totalCompleted: completedSentenceIds.length,
+          lastCompletedAt: nowIso(),
         },
       },
     };

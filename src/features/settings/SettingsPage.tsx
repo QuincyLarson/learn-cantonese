@@ -16,6 +16,15 @@ import { SettingsOnboardingCallout } from './SettingsOnboardingCallout';
 import { COMMON_CHARACTER_COUNT } from '@/features/learn/commonCharacters';
 import { COMMON_STRUCTURE_COUNT } from '@/features/learn/commonStructures';
 import { useScriptText } from '@/lib/script';
+import { countDueVocabCards } from '@/features/vocab/scheduler';
+import {
+  CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT,
+  getCantoneseSentenceCoverageCount,
+} from '@/features/cantoneseSentences/data';
+import {
+  CANTONESE_SPECIFIC_CHARACTER_COUNT,
+  CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT,
+} from '@/features/cantoneseSentences/cantoneseSpecificCharacters';
 
 const pageStyle: CSSProperties = {
   display: 'grid',
@@ -75,10 +84,6 @@ const actionRowStyle: CSSProperties = {
   gap: '0.75rem',
 };
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(0)}%`;
-}
-
 function downloadJson(filename: string, json: string): void {
   const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -103,23 +108,29 @@ function tryImportAppState(input: string): boolean {
 
 function statSummary(appState: AppState): Array<{ label: string; value: string }> {
   const { progress } = appState;
-  const quizEntries = Object.values(progress.quizScores);
-  const gamesPlayed = Object.values(progress.arcadeStats.games).reduce((sum, game) => sum + game.plays, 0);
-  const successfulQuizzes = quizEntries.filter((entry) => entry.passed).length;
-  const averageQuizScore = quizEntries.length
-    ? Math.round(quizEntries.reduce((sum, entry) => sum + entry.lastScore, 0) / quizEntries.length)
-    : 0;
-  const reviewLaterCount = progress.reviewLaterIds.length;
+  const cardEntries = Object.values(progress.vocab.cardStats);
+  const characterEntries = Object.values(progress.vocab.characterStats);
+  const typedCorrect = cardEntries.reduce((sum, entry) => sum + entry.correctCount, 0);
+  const revealedAnswers = cardEntries.reduce((sum, entry) => sum + entry.revealCount, 0);
+  const seenItems = progress.vocab.nextNewCardIndex;
+  const masteredCharacters = characterEntries.filter((entry) => Boolean(entry.masteredAt)).length;
+  const dueReviews = countDueVocabCards(progress.vocab);
+  const completedSentenceCoverage = getCantoneseSentenceCoverageCount(progress.cantoneseSentenceDrill.completedSentenceIds);
 
   return [
-    { label: '已完成課數', value: String(progress.completedLessonIds.length) },
-    { label: '待複習項目', value: String(reviewLaterCount) },
-    { label: '測驗通過', value: `${successfulQuizzes}/${quizEntries.length}` },
-    { label: '測驗平均分', value: formatPercent(averageQuizScore) },
-    { label: '快練次數', value: String(gamesPlayed) },
-    { label: '最佳連勝', value: String(progress.arcadeStats.bestStreak) },
+    { label: '已掌握常用字', value: `${masteredCharacters}/${COMMON_CHARACTER_COUNT}` },
+    { label: '待複習詞條', value: String(dueReviews) },
+    { label: '已走到', value: `${seenItems}/${COMMON_CHARACTER_COUNT}` },
+    { label: '正確完成', value: String(typedCorrect) },
+    { label: '看答案次數', value: String(revealedAnswers) },
+    { label: '發音完成課數', value: String(progress.completedLessonIds.length) },
+    { label: '發音測驗數', value: String(Object.keys(progress.quizScores).length) },
     { label: '常用字庫', value: String(COMMON_CHARACTER_COUNT) },
     { label: '常用搭配', value: String(COMMON_STRUCTURE_COUNT) },
+    { label: '粵字種子', value: String(CANTONESE_SPECIFIC_CHARACTER_COUNT) },
+    { label: '異體總數', value: String(CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT) },
+    { label: '短句已覆蓋', value: `${completedSentenceCoverage}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
+    { label: '句組可覆蓋', value: `${CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
   ];
 }
 
@@ -179,7 +190,7 @@ export function SettingsPage(): JSX.Element {
   }
 
   function handleResetClick(): void {
-    if (typeof window !== 'undefined' && !window.confirm(text('確定要重設所有進度嗎？這會清除完成課程、測驗分數與本機設定。'))) {
+    if (typeof window !== 'undefined' && !window.confirm(text('確定要重設所有進度嗎？這會清除詞彙進度、發音進度與本機設定。'))) {
       return;
     }
 
@@ -193,9 +204,9 @@ export function SettingsPage(): JSX.Element {
       <div style={shellStyle}>
         <header style={cardStyle}>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
-            <h1 style={{ margin: 0 }}>{text('設定')}</h1>
+            <h1 style={{ margin: 0 }}>{text('統計與設定')}</h1>
             <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('這裡管理字體、外觀、播放速度，以及本機儲存的學習進度。')}
+              {text('這裡看進度，也可以調整字體、外觀、播放速度與本機儲存。')}
             </p>
           </div>
           <SettingsOnboardingCallout />
@@ -243,7 +254,7 @@ export function SettingsPage(): JSX.Element {
               {text('資料匯入與匯出')}
             </h2>
             <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('匯出的進度檔會包含完成課程、測驗分數、複習標記、快練統計與設定。')}
+              {text('匯出的進度檔會包含詞彙進度、回鍋清單、發音進度與設定。')}
             </p>
             <div style={actionRowStyle}>
               <button type="button" className="button button--secondary" onClick={handleExportClick}>

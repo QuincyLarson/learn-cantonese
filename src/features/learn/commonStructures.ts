@@ -15,6 +15,10 @@ async function loadCommonStructures(): Promise<CommonStructureEntry[]> {
   return cachedEntries;
 }
 
+export async function getCommonStructureEntries(): Promise<CommonStructureEntry[]> {
+  return loadCommonStructures();
+}
+
 function normalizeJyutpingQuery(query: string) {
   return query.trim().toLowerCase().replace(/\s+/g, ' ');
 }

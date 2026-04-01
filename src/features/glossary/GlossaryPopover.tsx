@@ -7,9 +7,12 @@ import { useSettingsState } from '@/features/progress';
 
 type GlossaryPopoverProps = {
   entry: GlossaryEntry;
+  triggerLabel?: string;
+  ariaLabel?: string;
+  buttonClassName?: string;
 };
 
-export function GlossaryPopover({ entry }: GlossaryPopoverProps) {
+export function GlossaryPopover({ entry, triggerLabel, ariaLabel, buttonClassName }: GlossaryPopoverProps) {
   const { scriptPreference } = useSettingsState();
   const [open, setOpen] = useState(false);
   const text = useScriptText(scriptPreference);
@@ -23,11 +26,12 @@ export function GlossaryPopover({ entry }: GlossaryPopoverProps) {
     >
       <button
         type="button"
-        className="glossary-chip__button"
+        className={buttonClassName ?? 'glossary-chip__button'}
         aria-expanded={open}
+        aria-label={ariaLabel ?? text(`${entry.headword} 詞彙說明`)}
         onClick={() => setOpen((current) => !current)}
       >
-        {text(entry.headword)}
+        {triggerLabel ?? text(entry.headword)}
       </button>
       {open ? (
         <div className="glossary-popover" role="dialog" aria-label={text(`${entry.headword} 詞彙說明`)}>
@@ -53,7 +57,7 @@ export function GlossaryPopover({ entry }: GlossaryPopoverProps) {
               <p>{text(entry.note)}</p>
             </div>
           ) : null}
-          <AudioButton asset={audio} compact label={text(`播放 ${entry.headword}`)} />
+          {audio ? <AudioButton asset={audio} compact label={text(`播放 ${entry.headword}`)} /> : null}
         </div>
       ) : null}
     </div>

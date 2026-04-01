@@ -60,18 +60,19 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const navItems = useMemo(
     () => [
-      { to: '/', label: text('課程') },
-      { to: '/arcade', label: text('快練') },
-      { to: '/settings', label: text('設定') },
+      { to: '/pronunciation', label: '粵語發音' },
+      { to: '/cantonese-sentences', label: '粵字短句' },
+      { to: '/grammar', label: '粵語語法' },
+      { to: '/vocab', label: '粵拼詞彙' },
     ],
-    [text],
+    [],
   );
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <Link to="/" className="brandmark" aria-label={text('返回首頁')}>
+          <Link to="/vocab" className="brandmark" aria-label={text('返回首頁')}>
             <span className="brandmark__title">{text('普通話學粵語')}</span>
           </Link>
 
@@ -82,12 +83,18 @@ export function AppLayout({ children }: AppLayoutProps) {
                 to={item.to}
                 className={({ isActive }) => (isActive ? 'navlink is-active' : 'navlink')}
               >
-                {item.label}
+                {text(item.label)}
               </NavLink>
             ))}
           </nav>
 
           <div className="topbar__controls">
+            <NavLink
+              to="/settings"
+              className={({ isActive }) => (isActive ? 'navlink navlink--utility is-active' : 'navlink navlink--utility')}
+            >
+              {text('統計')}
+            </NavLink>
             <ToggleGroup
               ariaLabel={text('字體腳本切換')}
               options={[

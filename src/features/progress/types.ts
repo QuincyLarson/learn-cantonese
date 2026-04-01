@@ -37,6 +37,49 @@ export interface ArcadeStats {
   games: Record<string, ArcadeGameStats>;
 }
 
+export interface VocabCharacterProgress {
+  seenCount: number;
+  correctCount: number;
+  revealCount: number;
+  lastSeenAt?: string;
+  masteredAt?: string;
+}
+
+export interface VocabCardProgress {
+  seenCount: number;
+  correctCount: number;
+  revealCount: number;
+  lastSeenAt?: string;
+  lastResult?: 'correct' | 'revealed';
+  dueTurn: number;
+  intervalTurns: number;
+  easeFactor: number;
+  consecutiveCorrect: number;
+  masteryLevel: number;
+  status: 'new' | 'learning' | 'review';
+}
+
+export interface VocabProgressState {
+  reviewTurn: number;
+  nextNewCardIndex: number;
+  newCardsSinceReview: number;
+  sessionStartedAt?: string;
+  sessionLastActivityAt?: string;
+  sessionCorrectCardIds: string[];
+  totalAttempts: number;
+  totalCorrect: number;
+  totalRevealed: number;
+  characterStats: Record<string, VocabCharacterProgress>;
+  cardStats: Record<string, VocabCardProgress>;
+}
+
+export interface CantoneseSentenceDrillProgress {
+  nextSentenceIndex: number;
+  completedSentenceIds: string[];
+  totalCompleted: number;
+  lastCompletedAt?: string;
+}
+
 export interface ProgressState {
   schemaVersion: 1;
   completedLessonIds: string[];
@@ -44,6 +87,8 @@ export interface ProgressState {
   quizScores: Record<string, QuizScoreRecord>;
   reviewLaterIds: string[];
   arcadeStats: ArcadeStats;
+  vocab: VocabProgressState;
+  cantoneseSentenceDrill: CantoneseSentenceDrillProgress;
   dismissedCalloutIds: string[];
   experimentalFlags: Record<string, boolean>;
 }
@@ -86,7 +131,18 @@ export interface ArcadeSessionInput {
   streak?: number;
 }
 
+export interface VocabAttemptInput {
+  cardId: string;
+  characterIds: string[];
+  result: 'correct' | 'revealed';
+  selectedDeckIndex?: number;
+}
+
+export interface CantoneseSentenceCompletionInput {
+  sentenceId: string;
+  selectedSentenceIndex?: number;
+}
+
 export interface CalloutDismissInput {
   calloutId: string;
 }
-

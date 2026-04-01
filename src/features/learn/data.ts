@@ -38,6 +38,17 @@ const audioById = content.audio.reduce<Record<string, AudioAsset>>((result, asse
   return result;
 }, {});
 
+const audioByText = content.audio.reduce<Record<string, AudioAsset>>((result, asset) => {
+  for (const value of [asset.label, asset.transcript]) {
+    const normalized = value.trim();
+    if (normalized && !result[normalized]) {
+      result[normalized] = asset;
+    }
+  }
+
+  return result;
+}, {});
+
 export function getSections(): Section[] {
   return sections;
 }
@@ -95,6 +106,14 @@ export function getAudioAsset(audioId: string | undefined): AudioAsset | undefin
   }
 
   return audioById[audioId];
+}
+
+export function findAudioAssetByText(value: string | undefined): AudioAsset | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return audioByText[value.trim()];
 }
 
 export function getSectionCompletion(sectionId: string, completedLessonIds: string[]): number {

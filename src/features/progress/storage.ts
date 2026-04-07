@@ -39,9 +39,12 @@ export function createDefaultAppState(): AppState {
         cardStats: {},
       },
       cantoneseSentenceDrill: {
+        reviewTurn: 0,
         nextSentenceIndex: 0,
+        newCardsSinceReview: 0,
         completedSentenceIds: [],
         totalCompleted: 0,
+        sentenceStats: {},
       },
       dismissedCalloutIds: [],
       experimentalFlags: {},

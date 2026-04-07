@@ -13,6 +13,7 @@ import type {
   VocabAttemptInput,
 } from './types';
 import { isVocabSessionExpired, projectVocabCardAfterAttempt } from '@/features/vocab/scheduler';
+import { projectSentenceCardAfterCompletion } from '@/features/cantoneseSentences/scheduler';
 
 type Listener = () => void;
 
@@ -369,13 +370,69 @@ function normalizeCantoneseSentenceDrillProgress(value: unknown): AppState['prog
   }
 
   const completedSentenceIds = uniqueStrings(value.completedSentenceIds);
-  const totalCompleted = safeInt(value.totalCompleted) || completedSentenceIds.length;
+  const reviewTurn = safeInt(value.reviewTurn ?? value.totalCompleted ?? completedSentenceIds.length);
+  const sentenceStats: AppState['progress']['cantoneseSentenceDrill']['sentenceStats'] = {};
+
+  if (isObject(value.sentenceStats)) {
+    for (const [sentenceId, entry] of Object.entries(value.sentenceStats)) {
+      if (!isObject(entry)) {
+        continue;
+      }
+
+      const masteryLevel = Math.min(3, safeInt(entry.masteryLevel ?? entry.correctCount));
+      const status =
+        entry.status === 'new' || entry.status === 'learning' || entry.status === 'review' || entry.status === 'mastered'
+          ? entry.status
+          : masteryLevel >= 3
+            ? 'mastered'
+            : masteryLevel >= 2
+              ? 'review'
+              : masteryLevel >= 1
+                ? 'learning'
+                : 'new';
+
+      sentenceStats[sentenceId] = {
+        seenCount: safeInt(entry.seenCount ?? entry.correctCount),
+        correctCount: safeInt(entry.correctCount),
+        dueTurn: masteryLevel >= 3 ? Number.MAX_SAFE_INTEGER : safeInt(entry.dueTurn ?? reviewTurn),
+        masteryLevel,
+        status,
+        lastCompletedAt: typeof entry.lastCompletedAt === 'string' ? entry.lastCompletedAt : undefined,
+      };
+    }
+  }
+
+  for (const sentenceId of completedSentenceIds) {
+    if (sentenceStats[sentenceId]) {
+      continue;
+    }
+
+    sentenceStats[sentenceId] = {
+      seenCount: 1,
+      correctCount: 1,
+      dueTurn: reviewTurn,
+      masteryLevel: 1,
+      status: 'learning',
+      lastCompletedAt: typeof value.lastCompletedAt === 'string' ? value.lastCompletedAt : undefined,
+    };
+  }
+
+  const normalizedCompletedIds = Array.from(new Set([
+    ...completedSentenceIds,
+    ...Object.entries(sentenceStats)
+      .filter(([, entry]) => entry.correctCount > 0)
+      .map(([sentenceId]) => sentenceId),
+  ]));
+  const totalCompleted = safeInt(value.totalCompleted) || normalizedCompletedIds.length;
 
   return {
+    reviewTurn,
     nextSentenceIndex: safeInt(value.nextSentenceIndex),
-    completedSentenceIds,
+    newCardsSinceReview: safeInt(value.newCardsSinceReview),
+    completedSentenceIds: normalizedCompletedIds,
     totalCompleted,
     lastCompletedAt: typeof value.lastCompletedAt === 'string' ? value.lastCompletedAt : undefined,
+    sentenceStats,
   };
 }
 
@@ -725,6 +782,11 @@ export function recordCantoneseSentenceCompletion(input: CantoneseSentenceComple
   }
 
   return setAppState((current) => {
+    const completedAt = nowIso();
+    const previousProgress = current.progress.cantoneseSentenceDrill.sentenceStats[sentenceId];
+    const wasNewSentence = !previousProgress || previousProgress.seenCount === 0;
+    const nextReviewTurn = current.progress.cantoneseSentenceDrill.reviewTurn + 1;
+    const nextSentenceProgress = projectSentenceCardAfterCompletion(previousProgress, nextReviewTurn, completedAt);
     const completedSentenceIds = Array.from(
       new Set([...current.progress.cantoneseSentenceDrill.completedSentenceIds, sentenceId]),
     );
@@ -734,13 +796,70 @@ export function recordCantoneseSentenceCompletion(input: CantoneseSentenceComple
       progress: {
         ...current.progress,
         cantoneseSentenceDrill: {
-          nextSentenceIndex: Math.max(
-            current.progress.cantoneseSentenceDrill.nextSentenceIndex,
-            safeInt(input.selectedSentenceIndex ?? current.progress.cantoneseSentenceDrill.nextSentenceIndex) + 1,
-          ),
+          reviewTurn: nextReviewTurn,
+          nextSentenceIndex: wasNewSentence
+            ? Math.max(
+              current.progress.cantoneseSentenceDrill.nextSentenceIndex,
+              safeInt(input.selectedSentenceIndex ?? current.progress.cantoneseSentenceDrill.nextSentenceIndex) + 1,
+            )
+            : current.progress.cantoneseSentenceDrill.nextSentenceIndex,
+          newCardsSinceReview: wasNewSentence
+            ? current.progress.cantoneseSentenceDrill.newCardsSinceReview + 1
+            : 0,
           completedSentenceIds,
           totalCompleted: completedSentenceIds.length,
-          lastCompletedAt: nowIso(),
+          lastCompletedAt: completedAt,
+          sentenceStats: {
+            ...current.progress.cantoneseSentenceDrill.sentenceStats,
+            [sentenceId]: nextSentenceProgress,
+          },
+        },
+      },
+    };
+  });
+}
+
+export function resetCantoneseSentenceDrill(): AppState {
+  return setAppState((current) => ({
+    ...current,
+    progress: {
+      ...current.progress,
+      cantoneseSentenceDrill: createDefaultAppState().progress.cantoneseSentenceDrill,
+    },
+  }));
+}
+
+export function resetCantoneseSentenceLesson(sentenceIds: readonly string[]): AppState {
+  const ids = new Set(
+    sentenceIds
+      .map((sentenceId) => sentenceId.trim())
+      .filter((sentenceId) => sentenceId.length > 0),
+  );
+
+  if (ids.size === 0) {
+    return snapshot;
+  }
+
+  return setAppState((current) => {
+    const sentenceStats = { ...current.progress.cantoneseSentenceDrill.sentenceStats };
+    ids.forEach((sentenceId) => {
+      delete sentenceStats[sentenceId];
+    });
+
+    const completedSentenceIds = current.progress.cantoneseSentenceDrill.completedSentenceIds.filter(
+      (sentenceId) => !ids.has(sentenceId),
+    );
+
+    return {
+      ...current,
+      progress: {
+        ...current.progress,
+        cantoneseSentenceDrill: {
+          ...current.progress.cantoneseSentenceDrill,
+          newCardsSinceReview: 0,
+          completedSentenceIds,
+          totalCompleted: completedSentenceIds.length,
+          sentenceStats,
         },
       },
     };

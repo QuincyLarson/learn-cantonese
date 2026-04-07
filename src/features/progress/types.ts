@@ -74,9 +74,21 @@ export interface VocabProgressState {
 }
 
 export interface CantoneseSentenceDrillProgress {
+  reviewTurn: number;
   nextSentenceIndex: number;
+  newCardsSinceReview: number;
   completedSentenceIds: string[];
   totalCompleted: number;
+  lastCompletedAt?: string;
+  sentenceStats: Record<string, CantoneseSentenceCardProgress>;
+}
+
+export interface CantoneseSentenceCardProgress {
+  seenCount: number;
+  correctCount: number;
+  dueTurn: number;
+  masteryLevel: number;
+  status: 'new' | 'learning' | 'review' | 'mastered';
   lastCompletedAt?: string;
 }
 

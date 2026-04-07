@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { ToggleGroup } from '@/components/ToggleGroup';
+import { ReactNode, useEffect, useState } from 'react';
+import { HeaderSwitch } from '@/components/HeaderSwitch';
 import { isTypingTarget } from '@/lib/dom';
 import { useScriptText } from '@/lib/script';
 import {
@@ -58,35 +58,21 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [scriptPreference]);
 
-  const navItems = useMemo(
-    () => [
-      { to: '/pronunciation', label: '粵語發音' },
-      { to: '/cantonese-sentences', label: '粵字短句' },
-      { to: '/grammar', label: '粵語語法' },
-      { to: '/vocab', label: '粵拼詞彙' },
-    ],
-    [],
-  );
+  const toggleScriptPreference = () => {
+    setScriptPreference(scriptPreference === 'traditional' ? 'simplified' : 'traditional');
+  };
+
+  const toggleTheme = () => {
+    setThemePreference(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <Link to="/vocab" className="brandmark" aria-label={text('返回首頁')}>
+          <Link to="/curriculum" className="brandmark" aria-label={text('返回首頁')}>
             <span className="brandmark__title">{text('普通話學粵語')}</span>
           </Link>
-
-          <nav className="topnav" aria-label={text('主導覽')}>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => (isActive ? 'navlink is-active' : 'navlink')}
-              >
-                {text(item.label)}
-              </NavLink>
-            ))}
-          </nav>
 
           <div className="topbar__controls">
             <NavLink
@@ -95,24 +81,22 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               {text('統計')}
             </NavLink>
-            <ToggleGroup
-              ariaLabel={text('字體腳本切換')}
-              options={[
-                { label: '繁', value: 'traditional' },
-                { label: '简', value: 'simplified' },
-              ]}
-              value={scriptPreference}
-              onChange={setScriptPreference}
-            />
-            <ToggleGroup
-              ariaLabel={text('明暗模式切換')}
-              options={[
-                { label: text('亮'), value: 'light' },
-                { label: text('暗'), value: 'dark' },
-              ]}
-              value={resolvedTheme}
-              onChange={setThemePreference}
-            />
+            <div className="topbar__switches" role="group" aria-label={text('顯示設定')}>
+              <HeaderSwitch
+                ariaLabel={text('切換繁簡')}
+                offLabel={text('繁')}
+                onLabel={text('简')}
+                checked={scriptPreference === 'simplified'}
+                onToggle={toggleScriptPreference}
+              />
+              <HeaderSwitch
+                ariaLabel={text('切換明暗')}
+                offLabel={text('亮')}
+                onLabel={text('暗')}
+                checked={resolvedTheme === 'dark'}
+                onToggle={toggleTheme}
+              />
+            </div>
           </div>
         </div>
       </header>

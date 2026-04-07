@@ -18,6 +18,7 @@ import { COMMON_STRUCTURE_COUNT } from '@/features/learn/commonStructures';
 import { useScriptText } from '@/lib/script';
 import { countDueVocabCards } from '@/features/vocab/scheduler';
 import {
+  CANTONESE_SENTENCE_CARD_COUNT,
   CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT,
   getCantoneseSentenceCoverageCount,
 } from '@/features/cantoneseSentences/data';
@@ -25,6 +26,7 @@ import {
   CANTONESE_SPECIFIC_CHARACTER_COUNT,
   CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT,
 } from '@/features/cantoneseSentences/cantoneseSpecificCharacters';
+import { countDueSentenceCards, countMasteredSentenceCards } from '@/features/cantoneseSentences/scheduler';
 
 const pageStyle: CSSProperties = {
   display: 'grid',
@@ -116,6 +118,8 @@ function statSummary(appState: AppState): Array<{ label: string; value: string }
   const masteredCharacters = characterEntries.filter((entry) => Boolean(entry.masteredAt)).length;
   const dueReviews = countDueVocabCards(progress.vocab);
   const completedSentenceCoverage = getCantoneseSentenceCoverageCount(progress.cantoneseSentenceDrill.completedSentenceIds);
+  const dueSentenceReviews = countDueSentenceCards(progress.cantoneseSentenceDrill);
+  const masteredSentences = countMasteredSentenceCards(progress.cantoneseSentenceDrill);
 
   return [
     { label: '已掌握常用字', value: `${masteredCharacters}/${COMMON_CHARACTER_COUNT}` },
@@ -129,6 +133,8 @@ function statSummary(appState: AppState): Array<{ label: string; value: string }
     { label: '常用搭配', value: String(COMMON_STRUCTURE_COUNT) },
     { label: '粵字種子', value: String(CANTONESE_SPECIFIC_CHARACTER_COUNT) },
     { label: '異體總數', value: String(CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT) },
+    { label: '短句已練熟', value: `${masteredSentences}/${CANTONESE_SENTENCE_CARD_COUNT}` },
+    { label: '短句待複習', value: String(dueSentenceReviews) },
     { label: '短句已覆蓋', value: `${completedSentenceCoverage}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
     { label: '句組可覆蓋', value: `${CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
   ];

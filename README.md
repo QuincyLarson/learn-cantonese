@@ -1,6 +1,12 @@
 # Standard Cantonese for Mandarin Speakers
 
-Static, content-driven Cantonese learning app for Mandarin-speaking adults. The first production slice is intentionally small: a polished A1 starter path, local progress only, and bundled static audio placeholders that can be replaced later without changing the app architecture.
+Static, content-driven Cantonese learning app for Mandarin-speaking adults. The product is now organized around one linear path:
+
+1. Chapter 1: learn Cantonese pronunciation through Jyutping
+2. Chapter 2: learn the characters and grammatical patterns that differ from Mandarin
+3. Endless practice mode for long-term spaced repetition and refinement
+
+The current implementation is still an early production slice, but the product direction is now explicitly built around those two onboarding chapters plus the long-tail drill system.
 
 ## Architecture
 
@@ -12,7 +18,14 @@ Static, content-driven Cantonese learning app for Mandarin-speaking adults. The 
 - Script conversion is browser-side so the same content can render in Traditional or Simplified Chinese
 - Routing uses `HashRouter`, so deep links stay GitHub Pages-safe without any server rewrites
 
-The product is designed around a freeCodeCamp-style curriculum map: sections contain lessons, lessons contain ordered step types, and step rendering is driven by content data.
+The product is designed around a simple learner-facing flow:
+
+- curriculum home
+- Chapter 1 pronunciation and Jyutping foundations
+- Chapter 2 Cantonese-specific characters and sentence patterns
+- endless practice for high-volume review
+
+Under the hood, the content model is still typed and modular so the curriculum can scale toward A1–C2 without changing the static architecture.
 
 ## Content Model
 
@@ -53,17 +66,25 @@ Keep content in Chinese for v1. Author lesson copy in Traditional Chinese and co
 
 ## Adding Lessons
 
+The preferred authoring direction is now:
+
+1. Add or update Chapter 1 pronunciation lessons that teach tones, initials, finals, and follow-up labs.
+2. Add or update Chapter 2 short-sentence lessons that target Mandarin interference and Cantonese-specific forms.
+3. Expand endless practice decks so learners can keep cycling through 5k characters and high-frequency structures.
+
+General rules:
+
 1. Add or update the section and lesson records in the content files.
 2. Create steps using the existing step union instead of embedding ad hoc JSX.
 3. Add any new glossary items to the lexicon so hover/tap popovers stay reusable.
 4. Register audio ids in the manifest if a step or phrase expects playback.
 5. Keep ids stable. Progress, review flags, and quiz results should not break when copy changes.
 
-Guidelines for new A1 content:
+Guidelines for new chapter content:
 
-- Prefer short, bite-sized steps
-- Focus on recognition and listening before recall
-- Keep explanations practical and adult-facing
+- Teach Jyutping directly instead of leaning on other phonetic systems
+- Focus first on Cantonese points that materially differ from Mandarin
+- Prefer short, high-value sentence contexts over long explanation
 - Use one canonical Cantonese answer per exercise
 - Avoid variant clutter and avoid non-course topics
 
@@ -141,10 +162,11 @@ Progress and preferences are stored only in the browser via `localStorage`.
 
 ## Future Scaling TODOs
 
-- Expand from A1 into A2, B1, B2, C1, and C2 with the same content schema
+- Expand the two onboarding chapters until they cover the full high-transfer Mandarin-speaker path into Cantonese
+- Map the same curriculum into A1, A2, B1, B2, C1, and C2 depth bands without changing the learner-facing three-part structure
 - Add richer review scheduling without moving away from local storage
 - Replace placeholder audio with complete bundled narration and drills
-- Add stronger pronunciation practice while keeping scoring non-authoritative
+- Add stronger Chapter 1 typing and read-aloud labs while keeping scoring non-authoritative
 - Broaden the lexicon and lesson map without changing stable ids
 - Add optional English support only after the Chinese-first experience is solid
 

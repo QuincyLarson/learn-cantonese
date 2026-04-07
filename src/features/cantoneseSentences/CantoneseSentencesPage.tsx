@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { getAudioSource, primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
 import { GlossaryPopover } from '@/features/glossary/GlossaryPopover';
 import { findAudioAssetByText } from '@/features/learn/data';
-import { recordCantoneseSentenceCompletion, useProgressState, useSettingsState } from '@/features/progress';
+import { recordCantoneseSentenceCompletion, resetCantoneseSentenceLesson, useProgressState, useSettingsState } from '@/features/progress';
 import { isTypingTarget } from '@/lib/dom';
 import { useScriptText } from '@/lib/script';
-import { cantoneseSentenceCards } from './data';
+import { getCantoneseSentenceCardsForLesson, getCantoneseSentenceLesson } from './data';
+import { projectSentenceCardAfterCompletion, selectNextSentenceCard } from './scheduler';
 
 type InputState = 'idle' | 'typing' | 'correct' | 'wrong';
 
@@ -57,6 +58,7 @@ function classifyJyutpingInput(input: string, answer: string): InputState {
 }
 
 export function CantoneseSentencesPage() {
+  const { lessonId } = useParams();
   const progress = useProgressState();
   const { scriptPreference, playbackSpeed } = useSettingsState();
   const text = useScriptText(scriptPreference);
@@ -66,24 +68,43 @@ export function CantoneseSentencesPage() {
   const [correctPendingAdvance, setCorrectPendingAdvance] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showJyutping, setShowJyutping] = useState(true);
+  const lesson = lessonId ? getCantoneseSentenceLesson(lessonId) : undefined;
+  const lessonCards = useMemo(
+    () => (lesson ? getCantoneseSentenceCardsForLesson(lesson.id) : []),
+    [lesson],
+  );
 
   const selection = useMemo(() => {
-    const completedIds = new Set(progress.cantoneseSentenceDrill.completedSentenceIds);
-    const startingIndex = progress.cantoneseSentenceDrill.nextSentenceIndex;
-    const forwardMatchIndex = cantoneseSentenceCards.findIndex(
-      (card, index) => index >= startingIndex && !completedIds.has(card.id),
-    );
-    const fallbackIndex = cantoneseSentenceCards.findIndex((card) => !completedIds.has(card.id));
-    const selectedIndex = forwardMatchIndex >= 0 ? forwardMatchIndex : fallbackIndex;
-
+    const nextSelection = selectNextSentenceCard(progress.cantoneseSentenceDrill, lessonCards);
     return {
-      card: selectedIndex >= 0 ? cantoneseSentenceCards[selectedIndex] : null,
-      index: selectedIndex >= 0 ? selectedIndex : undefined,
+      card: nextSelection?.card ?? null,
+      index: nextSelection?.index,
+      reason: nextSelection?.reason,
     };
-  }, [progress.cantoneseSentenceDrill.completedSentenceIds, progress.cantoneseSentenceDrill.nextSentenceIndex]);
+  }, [lessonCards, progress.cantoneseSentenceDrill]);
 
   const currentCard = selection.card;
   const inputState = currentCard ? classifyJyutpingInput(value, currentCard.jyutping) : 'idle';
+  const masteredSentenceCount = useMemo(() => {
+    if (!lesson) {
+      return 0;
+    }
+
+    return lesson.cardIds.filter((cardId) => (
+      progress.cantoneseSentenceDrill.sentenceStats[cardId]?.masteryLevel >= 3
+    )).length;
+  }, [lesson, progress.cantoneseSentenceDrill.sentenceStats]);
+  const dueSentenceCount = useMemo(
+    () => lessonCards.filter((card) => {
+      const stat = progress.cantoneseSentenceDrill.sentenceStats[card.id];
+      return stat && stat.masteryLevel > 0 && stat.masteryLevel < 3 && stat.dueTurn <= progress.cantoneseSentenceDrill.reviewTurn;
+    }).length,
+    [lessonCards, progress.cantoneseSentenceDrill.reviewTurn, progress.cantoneseSentenceDrill.sentenceStats],
+  );
+
+  if (!lesson) {
+    return <Navigate to="/cantonese-sentences" replace />;
+  }
 
   useEffect(() => {
     primeSpeechVoices();
@@ -138,10 +159,20 @@ export function CantoneseSentencesPage() {
       return;
     }
 
+    const previewProgress = projectSentenceCardAfterCompletion(
+      progress.cantoneseSentenceDrill.sentenceStats[currentCard.id],
+      progress.cantoneseSentenceDrill.reviewTurn + 1,
+      new Date().toISOString(),
+    );
+
     setCorrectPendingAdvance(true);
-    setFeedback(text('句子完成'));
+    setFeedback(
+      previewProgress.masteryLevel >= 3
+        ? text('呢句已經練熟')
+        : text(`呢句掌握 ${previewProgress.masteryLevel}/3`),
+    );
     playSentenceAudio(currentCard.text, currentCard.simplified);
-  }, [correctPendingAdvance, currentCard, inputState, text]);
+  }, [correctPendingAdvance, currentCard, inputState, progress.cantoneseSentenceDrill.reviewTurn, progress.cantoneseSentenceDrill.sentenceStats, text]);
 
   function stopSentencePlayback() {
     const currentAudio = audioRef.current;
@@ -202,10 +233,24 @@ export function CantoneseSentencesPage() {
       <div className="page-stack">
         <section className="sentence-stage">
           <div className="vocab-empty">
-            <p>{text('呢一組粵字短句已經完成。')}</p>
-            <Link className="button button--primary" to="/settings">
-              {text('睇統計')}
-            </Link>
+            <p>{text('呢一組粵字短句已經全部練熟。')}</p>
+            <div className="sentence-actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  resetCantoneseSentenceLesson(lesson.cardIds);
+                  setValue('');
+                  setCorrectPendingAdvance(false);
+                  setFeedback(null);
+                }}
+              >
+                {text('再練本課')}
+              </button>
+              <Link className="button button--secondary" to="/cantonese-sentences">
+                {text('返回分組')}
+              </Link>
+            </div>
           </div>
         </section>
       </div>
@@ -216,6 +261,18 @@ export function CantoneseSentencesPage() {
     <div className="page-stack">
       <section className="sentence-stage">
         <div className="sentence-card">
+          <div className="sentence-lesson-head">
+            <h1>{text(lesson.title)}</h1>
+            <p>{text(lesson.summary)}</p>
+            <p>{text(lesson.teacherNote)}</p>
+          </div>
+
+          <div className="sentence-meta" aria-live="polite">
+            <span>{selection.reason === 'review' ? text('複習句') : text('新句')}</span>
+            <span>{text(`已熟 ${masteredSentenceCount}/${lesson.cardIds.length}`)}</span>
+            {dueSentenceCount > 0 ? <span>{text(`待複習 ${dueSentenceCount}`)}</span> : null}
+          </div>
+
           <div className="sentence-line" aria-live="polite">
             {currentCard.segments.map((segment, index) => (
               <span key={`${currentCard.id}-segment-${index}`} className="sentence-line__segment">

@@ -1,5 +1,5 @@
 # PRD: Standard Cantonese for Mandarin Speakers
-## Static, freeCodeCamp-style web curriculum for Guangzhou-oriented colloquial Cantonese
+## Static, linear web curriculum for Guangzhou-oriented colloquial Cantonese
 
 Version: 1.0  
 Status: Approved for initial build planning  
@@ -10,7 +10,16 @@ Primary market for v1: Mandarin-speaking adults who want to function in Hong Kon
 
 ## 1. Product summary
 
-Build a static web app that helps Mandarin speakers learn **standardized, Guangzhou-oriented colloquial Cantonese** through a freeCodeCamp-style interactive curriculum.
+Build a static web app that helps Mandarin speakers learn **standardized, Guangzhou-oriented colloquial Cantonese** through one linear curriculum:
+
+1. **Chapter 1: Learn Cantonese pronunciation through Jyutping**
+2. **Chapter 2: Learn the characters, words, and grammatical patterns that differ from Mandarin**
+3. **Endless practice mode** for long-term spaced repetition and refinement from A1 through C2
+
+The product is built around one key insight: Mandarin speakers already know most of the meanings, characters, and discourse structure they need for advanced Cantonese. The shortest path is therefore:
+- teach the Cantonese sound system correctly through Jyutping
+- fix the highest-frequency Cantonese-specific vocabulary and grammar interference points
+- spend most total learning hours in high-volume practice, not slow explanation
 
 The course should feel:
 - practical
@@ -364,14 +373,15 @@ If a pronunciation is wrong:
 
 ### 11.1 Learning model
 The curriculum combines:
-- phrase-first onboarding
-- early phonology
-- just-in-time grammar contrasts
-- practical dialogues
-- high-frequency vocabulary
+- Jyutping-first pronunciation onboarding
+- early tone stabilization
+- only the initials and finals that differ materially from pinyin
+- Mandarin-interference repair through short sentences
+- high-frequency Cantonese-specific characters and function words
 - repeated listening
+- read-aloud comparison labs
 - rapid review
-- simulated real-world reading
+- endless practice at increasing scale and speed
 
 ### 11.2 Lesson size
 Each step should take about **30–60 seconds** of thinking and doing.
@@ -383,12 +393,12 @@ The experience should feel like:
 
 ### 11.3 Section structure
 Each section should include:
-1. short introduction / scenario
-2. lesson sequence of micro-steps
-3. built-in review opportunities
-4. end-of-section quiz
-5. recommendation to repeat if below threshold
-6. optional repeat machine / arcade reinforcement
+1. one tiny target contrast or sentence pattern
+2. hear the target audio and see the Jyutping
+3. type the Jyutping
+4. read it aloud and compare with the target
+5. built-in review opportunities
+6. handoff into longer practice
 
 ### 11.4 Unlock policy
 Nothing is locked.
@@ -398,51 +408,31 @@ The course is strongly recommended in order, but learners can skip ahead.
 
 ## 12. Narrative spine
 
-Use a safe, practical narrative arc:
+Use a curriculum arc, not a travel-story arc:
 
-### A1
-A Mandarin-speaking visitor from Singapore arrives in Hong Kong:
-- survival phrases
-- airport / arrival
-- meeting friends
-- hotel check-in
-- getting around
-- eating
-- paying
-- asking simple questions
+### Chapter 1
+The learner rebuilds pronunciation through Jyutping:
+- six tones with one fixed syllable
+- initials that differ from pinyin
+- finals that differ from pinyin
+- early typing labs
+- early read-aloud comparison labs
 
-### A2
-The next day: business conference and urban daily life:
-- registration
-- networking
-- scheduling
-- taxis and transit
-- lunches
-- casual small talk
-- messaging
-- fixing simple problems
+### Chapter 2
+The learner repairs Mandarin interference through Cantonese-specific material:
+- high-frequency Cantonese-only characters
+- colloquial verbs that replace Mandarin-like choices
+- function words and particles in short sentences
+- sentence patterns that are guessable from context
+- pragmatic usage that sounds natural in Hong Kong / Guangdong
 
-### B1–B2
-Professional and social competence:
-- product demos
-- factory visits
-- shipping / logistics
-- arranging meetings
-- clarifying misunderstandings
-- customer / supplier interactions
-- presentations
-- follow-up communication
-
-### C1–C2
-High-speed professional fluency in safe domains:
-- nuanced meetings
-- negotiation framing
-- trade-fair conversations
-- professional hospitality
-- spontaneous discussion
-- persuasion
-- long-form listening
-- dense colloquial input
+### Endless practice
+The learner spends most total hours in long-form repetition:
+- word typing
+- sentence typing
+- listening replay
+- backlog review
+- progressively denser and faster input from A1 through C2
 
 ---
 
@@ -451,83 +441,186 @@ High-speed professional fluency in safe domains:
 The PRD should support a long-term A1–C2 roadmap, but the first implementation should ship a polished A1 slice.
 
 ### 13.1 Program-level structure
-Suggested macro structure:
+The long-term A1–C2 roadmap should be delivered through three product layers, not many disconnected tracks:
 
-- **Phase 0: Start Here**
-- **A1: Arrival and survival**
-- **A2: Daily city + conference basics**
-- **B1: Independent social and work interaction**
-- **B2: Professional confidence**
-- **C1: Fast colloquial professional Cantonese**
-- **C2: High-speed business and relationship fluency**
+1. **Chapter 1: Pronunciation through Jyutping**
+2. **Chapter 2: Cantonese-specific characters, vocabulary, and grammar patterns**
+3. **Endless practice mode** that keeps reviewing the same knowledge at increasing scale and speed
 
-### 13.2 Phase 0: Start Here
+CEFR labels still matter for internal curriculum planning, but the learner-facing structure should stay simple and linear.
+
+### 13.2 Chapter 1: Pronunciation through Jyutping
 Purpose:
-- immediately show value
-- prove Mandarin gives a shortcut
-- hook the learner
-- explain script toggle
-- teach a few survival phrases before technical phonology
+- establish Jyutping as the only phonetic system from the start
+- stop learners from mapping Cantonese onto pinyin habits
+- teach the six tones early with one fixed initial-final combination
+- teach only the initials and finals that differ materially from pinyin before expanding outward
 
-Suggested contents:
-- app intro
-- Traditional/Simplified toggle tip
-- “Why Cantonese is learnable if you know Mandarin”
-- first survival phrases
-- first 1–10 numbers
-- first insight cards for core function words
+Core lesson pattern:
+1. Hear one sound contrast
+2. See the Jyutping
+3. Type the Jyutping
+4. Read it aloud
+5. Compare with the target audio
 
-### 13.3 A1 section map
-Suggested A1 sections:
+Chapter 1 should include:
+- a simple animated tone visual showing all six tone contours
+- one fixed syllable used to teach all six tones before changing segmental material
+- the shortest path through initials and finals that are different from pinyin
+- early labs for Jyutping typing and read-aloud repetition
 
-1. Start Here: survival phrases in 10 minutes  
-2. Sound Lab 1: Jyutping, tones, initials, finals  
-3. Meet and greet  
-4. Airport / arrival / transport  
-5. Hotel and check-in  
-6. Food, drinks, and paying  
-7. Asking where things are  
-8. Reading Hong Kong in the wild  
-9. Review and checkpoint A1
+### 13.3 Chapter 2: Characters and patterns different from Mandarin
+Purpose:
+- target the highest-value Cantonese-specific material first
+- exploit the learner's existing Mandarin literacy instead of reteaching meanings
+- focus on what actually causes misunderstanding or outsider-like phrasing in Hong Kong / Guangdong
 
-### 13.4 A2 section map
-Suggested A2 sections:
-1. Conference arrival
-2. Registration and introductions
-3. Scheduling and timing
-4. Small talk over meals
-5. Messaging and arranging meetups
-6. Shopping and errands
-7. Simple problem solving
-8. Review and checkpoint A2
+Chapter 2 should include:
+- high-frequency Cantonese-specific characters
+- common colloquial verbs and function words that are not Mandarin-like
+- grammatical patterns that diverge sharply from Mandarin usage
+- short sentences where the meaning is guessable from context
+- inline Mandarin explanations only for the Cantonese-specific item, not for the whole sentence
 
-### 13.5 B1 section map
-Suggested B1 sections:
-1. Deeper listening to casual speech
-2. Describing plans and experiences
-3. Product and service conversations
-4. Directions, logistics, and coordination
-5. Reading signs, menus, notices, and chat
-6. Review and checkpoint B1
+### 13.4 Endless practice mode
+Purpose:
+- hold the learner inside high-volume repetition for the majority of total hours
+- cover 5,000 common characters and high-frequency Cantonese structures
+- keep growing from A1 into C2 without changing the core interaction model
 
-### 13.6 B2 section map
-Suggested B2 sections:
-1. Meetings and agendas
-2. Clarifying details
-3. Presenting and explaining
-4. Handling customer-facing interactions
-5. Negotiation basics in safe business settings
-6. Review and checkpoint B2
+Endless mode should include:
+- single-word and phrase Jyutping typing
+- short-sentence Jyutping typing
+- spaced repetition scheduling
+- replay, reveal, and self-correction loops
+- later expansion into faster listening, denser vocabulary, and professional colloquial input
 
-### 13.7 C1–C2 section map
-Suggested higher-level sections:
-- high-speed listening
-- dense colloquial dialogue
-- advanced sentence-final particles
-- persuasion and nuance
-- relationship management
-- conference floor and trade-fair interaction
-- long-form review and scenario simulation
+### 13.5 A1–C2 progression inside the linear model
+The linear model should still map to CEFR-like depth:
+
+- **A1–A2**: core Jyutping system, tone stability, highest-frequency Cantonese-only words and sentence frames
+- **B1–B2**: faster everyday listening, wider colloquial vocabulary, stronger control of particles and spoken syntax
+- **C1–C2**: high-speed colloquial comprehension, dense vocabulary, professional register, and sustained fluency under real-world speed
+
+### 13.6 500-book production plan
+The long-term production target is **500 books** across the three learner-facing layers.
+
+For planning purposes, a **book** means one compact curriculum packet with:
+- one clear teaching objective
+- one line of learner-facing summary copy
+- roughly 8 to 20 cards or drills
+- stable ids
+- glossary support for Cantonese-specific items
+- bundled or placeholder audio ids
+
+The final 500-book split should be:
+- **Unit 1 / Chapter 1 pronunciation**: 120 books
+- **Unit 2 / Chapter 2 Cantonese grammar and usage**: 180 books
+- **Endless practice**: 200 books
+
+### 13.7 Staged delivery targets
+Future agents should expand the curriculum in stages, always preserving the single linear learner view.
+
+#### Stage A: Foundation to 40 books
+Target:
+- Unit 1: 12 books
+- Unit 2: 18 books
+- Endless practice: 10 books
+
+Purpose:
+- make the first serious production slice feel complete
+- cover the full tone system and the first pinyin-different initials/finals
+- cover the highest-frequency Cantonese-only words, particles, and verb swaps
+- establish the first stable endless-practice loops
+
+#### Stage B: Core A1–A2 to 120 books
+Target:
+- Unit 1: 30 books
+- Unit 2: 45 books
+- Endless practice: 45 books
+
+Purpose:
+- finish the full Jyutping onboarding path for Mandarin speakers
+- cover the highest-value daily-life Cantonese-specific sentence patterns
+- make endless mode broad enough that learners can stay in it for real review
+
+#### Stage C: Working fluency to 250 books
+Target:
+- Unit 1: 60 books
+- Unit 2: 90 books
+- Endless practice: 100 books
+
+Purpose:
+- reach strong B1–B2 learner coverage
+- broaden listening, particle control, colloquial syntax, and Hong Kong usage clusters
+- deepen the review pool enough that learners stop looping only through beginner content
+
+#### Stage D: Advanced colloquial range to 380 books
+Target:
+- Unit 1: 90 books
+- Unit 2: 130 books
+- Endless practice: 160 books
+
+Purpose:
+- cover dense colloquial input, style/register shifts, and workplace/service interaction
+- prepare the transition from operational fluency to advanced nuance
+
+#### Stage E: Full catalog to 500 books
+Target:
+- Unit 1: 120 books
+- Unit 2: 180 books
+- Endless practice: 200 books
+
+Purpose:
+- complete the C1–C2 path
+- make the curriculum feel exhaustive for Mandarin-speaking adult learners
+- support years of continued refinement without changing the app model
+
+### 13.8 Book production order inside each unit
+Future agents should prioritize content in this order.
+
+#### Unit 1 order
+1. Six tones with one fixed syllable
+2. Pinyin-different initials
+3. Pinyin-different finals
+4. High-confusion minimal pairs
+5. Tone discrimination labs
+6. Read-aloud comparison labs
+7. Combined initial-final-tone mastery packs
+
+#### Unit 2 order
+1. Cantonese-only function words and particles
+2. High-frequency character swaps from Mandarin-like to Cantonese-like usage
+3. Common colloquial verbs and complements
+4. Sentence patterns that differ sharply from Mandarin
+5. Hong Kong daily-life clusters: transport, restaurants, office, shopping, service talk
+6. Higher-level discourse particles, register, and local media-style phrasing
+
+#### Endless practice order
+1. High-frequency single-character Jyutping packs
+2. Common two-character and short phrase packs
+3. Short-sentence typing packs
+4. Listening-heavy review packs
+5. Advanced nuance, rate, and register refinement packs
+
+### 13.9 Agent execution rules for future curriculum expansion
+Any future agent expanding the catalog should follow these rules:
+
+1. Add books in batches of roughly 8 to 20 at a time, not one isolated card.
+2. Keep each book centered on one Mandarin-speaker confusion point or one tightly related cluster.
+3. Update the curriculum counts in the app when adding books so the learner-facing totals stay truthful.
+4. Keep learner-facing summaries to one line each.
+5. Prefer colloquial Hong Kong / Guangdong usage over literal Mandarin translations.
+6. Do not add backend requirements, server scoring dependencies, or non-static content systems.
+7. When adding advanced material, preserve the same interaction model instead of inventing a second product.
+
+### 13.10 Definition of done for each stage
+A stage is only complete when:
+- the target book counts for each unit are met
+- each new book has stable ids and audio placeholders or assets
+- the curriculum page shows the correct built-versus-planned counts
+- the content remains Mandarin-speaker-first and contrastive
+- the full static build still works on GitHub Pages
 
 ---
 
@@ -537,46 +630,42 @@ The first 10 minutes must be exceptionally insight-dense.
 
 ### 14.1 Goals of the first 10 minutes
 The learner should leave thinking:
-- “I already understand some of this.”
-- “The script toggle makes this approachable.”
-- “These function words map to Mandarin in a useful way.”
-- “I can say a few things already.”
-- “I want to continue.”
+- “Jyutping is enough. I don’t need another phonetic crutch.”
+- “The tone numbers are learnable.”
+- “I can actually hear that the same segment changes meaning by tone.”
+- “The parts that differ from Mandarin are finite and teachable.”
+- “I want to keep going.”
 
 ### 14.2 Required content in the first 10 minutes
 Include:
 - onboarding banner pointing to script toggle
-- 3–5 survival phrases
-- numbers 1–10
-- at least 5 high-value Cantonese function-word mappings
-- at least one short listen-repeat interaction
-- at least one character tooltip interaction
-- at least one extremely short dialogue
+- one fixed-syllable six-tone visual
+- at least one listen-and-repeat interaction using Jyutping only
+- at least one type-the-Jyutping interaction
+- the first pinyin-different initials and finals
+- at least one Cantonese-specific character tooltip inside a short sentence
 
 ### 14.3 Candidate first insight set
-Strong early mappings:
-- 係 = 是
-- 喺 = 在
-- 嘅 = 的
-- 冇 = 沒有
-- 佢 = 他 / 她 / 它
-- 唔 = 不 / 沒 (depending on context)
-- 咗 = 了
+Strong early insights:
+- `si1` to `si6` can be the same segment with six different tones
+- Jyutping `j` is not pinyin `j`; it is closer to English `y`
+- `gw / kw` must keep the `w`
+- `ng` can appear at the start of a syllable
+- `aa` and `a` should not be collapsed
+- `n / l` must stay separate in the canonical target
 
-These should not be taught as abstract grammar first; they should be introduced through meaningful examples.
+These should be taught through audio + typing + immediate contrast, not through long explanation.
 
-### 14.4 Candidate first phrases
+### 14.4 Candidate first sentence targets
 Examples:
-- 你好
-- 唔該
-- 多謝
-- 洗手間喺邊度？
-- 我想去……
-- 呢個幾多錢？
-- 可以幫下我嗎？ (or colloquial equivalent preferred by editorial style guide)
+- 呢個係咩？
+- 佢喺邊度？
+- 我而家返工。
+- 呢啲嘢好啱用。
+- 你哋今日嚟唔嚟？
 
 Editorial note:
-content writers should keep phrases short, useful, and reusable.
+the first sentence targets should exist mainly to anchor pronunciation, Jyutping, and the first Cantonese-specific items, not to dump survival phrase lists.
 
 ---
 
@@ -1133,12 +1222,25 @@ Without a backend, scoring reliability will vary across devices and browsers.
 False confidence is worse than no score.
 
 ### 27.3 Optional experimental path
+Technology exists for cloud-based Cantonese speech recognition and limited pronunciation assessment, but reliable verification of **initial + final + tone** at curriculum-gating quality is not realistic for a static-only GitHub Pages product today.
+
 If implemented later:
 - feature-flagged
-- syllable-level only at first
-- only for dedicated pronunciation drills
+- optional online service, never required for the static core product
+- dedicated to Chapter 1 pronunciation labs first
 - outputs “likely close / check again,” not authoritative grading
+- may score initial, final, and tone separately only when confidence is high enough
 - never blocks curriculum completion
+
+### 27.4 Early-course pronunciation lab rule
+Because pronunciation matters early, Chapter 1 should still require:
+- target audio playback
+- learner recording
+- replay of learner audio
+- replay of target audio
+- self-rating and retry
+
+This gives meaningful pronunciation training without pretending the score is authoritative.
 
 ---
 
@@ -1241,37 +1343,38 @@ The product architecture supports A1–C2, but the first build should ship a pol
 
 ### 31.1 First build minimum content target
 Ship enough content to prove:
-- onboarding works
+- the new linear curriculum entry works
+- Chapter 1 pronunciation teaching works
+- Chapter 2 Mandarin-interference teaching works
+- endless practice mode works
 - the script toggle works
-- the lesson player works
 - audio works
 - glossary works
-- repeat machine works
-- quiz works
 - progress works
-- the curriculum can scale
+- the curriculum can scale to A1–C2
 
 ### 31.2 Suggested first-build content slice
 At minimum:
-- Start Here section
-- Sound Lab 1 section
-- Meet & Greet section
-- one quiz
-- one arcade prototype
+- one curriculum home page with three chapter entries
+- Chapter 1 tone visual plus first pronunciation lessons
+- Chapter 2 short-sentence lessons focused on Cantonese-specific items
+- endless word typing mode
+- one early pronunciation lab pattern
+- one short-sentence lesson cluster with inline glossary help
 
 ### 31.3 Suggested sample lessons in first build
-1. Welcome + script toggle  
-2. First survival phrases  
-3. Numbers 1–10  
-4. Five big Cantonese function words  
-5. Tones overview  
-6. Tone drill with one syllable  
-7. Core initials and finals  
-8. 你好 / 唔該 / 多謝 in context  
-9. Asking where the bathroom is  
-10. Simple mini-dialogue at hotel or station  
-11. Review  
-12. A1 checkpoint quiz
+1. Why Jyutping comes first for Mandarin speakers  
+2. Six tones with one fixed syllable  
+3. First initials that differ from pinyin  
+4. First finals that differ from pinyin  
+5. Type-the-Jyutping lab  
+6. Read-aloud comparison lab  
+7. High-frequency Cantonese-only characters in short sentences  
+8. Colloquial verbs that replace Mandarin-like choices  
+9. Core particles and completion markers in context  
+10. Short-sentence typing drill  
+11. Chapter 2 review cluster  
+12. Endless practice handoff
 
 ---
 
@@ -1285,9 +1388,10 @@ The milestone is successful if:
 - no external runtime dependency is required for core functionality
 
 ### UX
-- landing page explains the concept clearly
-- curriculum map is readable and motivating
-- lesson player supports multiple step types
+- landing page explains the three-part curriculum clearly
+- Chapter 1 makes the tone system visually legible
+- Chapter 2 is clearly about Mandarin-vs-Cantonese differences
+- endless practice is reachable as a long-term mode
 - dark mode works
 - script toggle works from any screen
 - keyboard shortcut works outside text inputs

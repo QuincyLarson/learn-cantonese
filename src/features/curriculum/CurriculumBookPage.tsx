@@ -1,24 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
-import { getAdjacentCurriculumBooks, getCurriculumBookById, getCurriculumBookPosition, getCurriculumUnitById } from './catalog';
-
-function getStageLabel(stageId: string): string {
-  switch (stageId) {
-    case 'stage-a':
-      return 'Stage A';
-    case 'stage-b':
-      return 'Stage B';
-    case 'stage-c':
-      return 'Stage C';
-    case 'stage-d':
-      return 'Stage D';
-    case 'stage-e':
-      return 'Stage E';
-    default:
-      return stageId;
-  }
-}
+import { getAdjacentCurriculumBooks, getCurriculumBookById, getCurriculumBookPosition } from './catalog';
 
 function getPracticeLabel(unitId: string): string {
   switch (unitId) {
@@ -92,7 +75,6 @@ export function CurriculumBookPage() {
     return <Navigate to="/curriculum" replace />;
   }
 
-  const unit = getCurriculumUnitById(book.unitId);
   const position = getCurriculumBookPosition(book.id);
   const { previousBook, nextBook } = getAdjacentCurriculumBooks(book.id);
   const introParagraphs = getBookIntro(book.unitId, book.title, book.summary);
@@ -102,7 +84,7 @@ export function CurriculumBookPage() {
     <div className="curriculum-book-page">
       <section className="curriculum-book-page__head">
         <p className="curriculum-book-page__eyebrow">
-          {text(`${unit?.title ?? ''} · ${getStageLabel(book.stageId)} · 第 ${position?.index ?? 1} / ${position?.total ?? 1} 冊`)}
+          {text(`第 ${position?.index ?? 1} 課`)}
         </p>
         <h1>{text(book.title)}</h1>
         <p className="curriculum-book-page__summary">{text(book.summary)}</p>
@@ -141,15 +123,15 @@ export function CurriculumBookPage() {
         </Link>
       </section>
 
-      <nav className="curriculum-book-page__nav" aria-label={text('冊次導航')}>
+      <nav className="curriculum-book-page__nav" aria-label={text('課程導航')}>
         {previousBook ? (
           <Link className="button button--secondary" to={previousBook.route ?? '/curriculum'}>
-            {text(`上一冊：${previousBook.title}`)}
+            {text(`上一課：${previousBook.title}`)}
           </Link>
         ) : <span />}
         {nextBook ? (
           <Link className="button button--secondary" to={nextBook.route ?? '/curriculum'}>
-            {text(`下一冊：${nextBook.title}`)}
+            {text(`下一課：${nextBook.title}`)}
           </Link>
         ) : null}
       </nav>

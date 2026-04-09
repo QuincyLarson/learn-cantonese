@@ -47,7 +47,7 @@ function getPreferredSpeechVoice(): SpeechSynthesisVoice | undefined {
   );
 }
 
-function getSpeechRate(speed: PlaybackSpeed): number {
+export function getSpeechRate(speed: PlaybackSpeed): number {
   if (speed === 0.5) {
     return 0.6;
   }
@@ -67,7 +67,7 @@ export function stopSpeechPlayback(): void {
   window.speechSynthesis.cancel();
 }
 
-export function speakText(text: string, speed: PlaybackSpeed): boolean {
+export function speakText(text: string, speed: PlaybackSpeed, options?: { rateMultiplier?: number }): boolean {
   const normalizedText = text.trim();
   if (!normalizedText || typeof window === 'undefined' || !('speechSynthesis' in window)) {
     return false;
@@ -77,7 +77,7 @@ export function speakText(text: string, speed: PlaybackSpeed): boolean {
   const voice = getPreferredSpeechVoice();
   const utterance = new SpeechSynthesisUtterance(normalizedText);
   utterance.lang = voice?.lang ?? 'zh-HK';
-  utterance.rate = getSpeechRate(speed);
+  utterance.rate = Math.max(0.45, getSpeechRate(speed) * (options?.rateMultiplier ?? 1));
   utterance.pitch = 1;
   utterance.volume = 1;
 

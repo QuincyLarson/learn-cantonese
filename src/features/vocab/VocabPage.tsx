@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import { getAudioSource, primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
 import { findAudioAssetByText } from '@/features/learn/data';
 import { recordVocabAttempt, useProgressState, useSettingsState } from '@/features/progress';
@@ -394,7 +395,9 @@ export function VocabPage() {
           {revealed || correctPendingAdvance ? (
             <div className="vocab-answer" role="status" aria-live="polite">
               <strong>{text('讀音')}</strong>
-              <span>{currentPrompt.jyutping}</span>
+              <span>
+                <InteractiveJyutping jyutping={currentPrompt.jyutping} speechText={currentPrompt.text} />
+              </span>
             </div>
           ) : null}
 

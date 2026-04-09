@@ -2827,7 +2827,10 @@ input[type='file'] {
 
 .tone-diagram__path--active {
   stroke: var(--cta-bg);
-  animation: tone-trace 720ms ease;
+}
+
+.tone-diagram__path--animate {
+  animation: tone-trace 720ms ease both;
 }
 
 .tone-diagram__label {
@@ -2877,6 +2880,81 @@ input[type='file'] {
 .tone-button__note {
   color: var(--text-muted);
   font-size: 0.88rem;
+}
+
+.interactive-jyutping {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.interactive-jyutping__trigger,
+.interactive-jyutping__replay {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+.interactive-jyutping__trigger {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.16em;
+}
+
+.interactive-jyutping__trigger:hover,
+.interactive-jyutping__trigger:focus-visible {
+  color: var(--accent);
+}
+
+.interactive-jyutping__popover {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.55rem);
+  z-index: 18;
+  display: grid;
+  gap: 0.55rem;
+  min-width: max-content;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.interactive-jyutping__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.interactive-jyutping__replay {
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.interactive-jyutping__tones {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.interactive-jyutping__syllable {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.interactive-jyutping__syllable-token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .pronunciation-difference {
@@ -2986,6 +3064,14 @@ input[type='file'] {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: clamp(1rem, 2vw, 1.15rem);
   color: var(--text-muted);
+}
+
+.sentence-jyutping .interactive-jyutping__trigger,
+.vocab-answer .interactive-jyutping__trigger,
+.flashcard-card__answer .interactive-jyutping__trigger,
+.glossary-popover .interactive-jyutping__trigger,
+.prompt-display--jyutping .interactive-jyutping__trigger {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .sentence-input {

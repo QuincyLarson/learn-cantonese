@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import { getAudioSource, primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
 import { GlossaryPopover } from '@/features/glossary/GlossaryPopover';
 import { findAudioAssetByText } from '@/features/learn/data';
@@ -291,7 +292,7 @@ export function CantoneseSentencesPage() {
 
           {showJyutping ? (
             <div className="sentence-jyutping">
-              {currentCard.jyutping}
+              <InteractiveJyutping jyutping={currentCard.jyutping} speechText={currentCard.text} />
             </div>
           ) : null}
 

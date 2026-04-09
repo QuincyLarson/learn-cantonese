@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import type { ArcadeActivity, CommonCharacterEntry } from '@/content';
 import { getCommonCharacterEntries } from '@/features/learn/commonCharacters';
 import { recordArcadeSession, useProgressState, useSettingsState } from '@/features/progress';
@@ -294,7 +295,9 @@ export function JyutpingFlashcardPanel({ activity }: JyutpingFlashcardPanelProps
           {revealedAnswer ? (
             <div className="flashcard-card__answer">
               <strong>{text('答案')}</strong>
-              <span>{currentCard.jyutping}</span>
+              <span>
+                <InteractiveJyutping jyutping={currentCard.jyutping} speechText={currentCard.character} />
+              </span>
             </div>
           ) : null}
 

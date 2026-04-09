@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { InteractiveJyutping, JyutpingAwareText } from '@/components/InteractiveJyutping';
 import { primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
 import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
@@ -55,9 +56,12 @@ export function PronunciationPage() {
       <section className="chapter-page__section">
         <h2>{text('先固定一個聲母同一個韻母，淨學六聲')}</h2>
         <p>
-          {text(
-            '先用 s + i 呢一組，連續聽、睇、讀 si1 到 si6。聲調一開始分得清，之後記字音先唔會一齊歪。按下面任何一個例字，就會播音，同時圖上會亮返嗰條聲調線。',
-          )}
+          <JyutpingAwareText
+            text={text(
+              '先用 s + i 呢一組，連續聽、睇、讀 si1 到 si6。聲調一開始分得清，之後記字音先唔會一齊歪。按下面任何一個例字，就會播音，同時圖上會亮返嗰條聲調線。',
+            )}
+            resolveSpeechText={(jyutping) => toneExamples.find((example) => example.jyutping === jyutping)?.character}
+          />
         </p>
 
         <div className="tone-trainer">
@@ -79,7 +83,9 @@ export function PronunciationPage() {
         </div>
 
         <p className="chapter-page__note">
-          {text(`而家揀緊 ${activeExample.jyutping}：${activeExample.character}。先固定一組音，再把六個聲調聽清楚。`)}
+          {text('而家揀緊 ')}
+          <InteractiveJyutping jyutping={activeExample.jyutping} speechText={activeExample.character} />
+          {text(`：${activeExample.character}。先固定一組音，再把六個聲調聽清楚。`)}
         </p>
       </section>
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import type { GlossaryEntry } from '@/content';
 import { AudioButton } from '@/features/audio/AudioButton';
 import { getAudioAsset } from '@/features/learn/data';
@@ -45,7 +46,9 @@ export function GlossaryPopover({ entry, triggerLabel, ariaLabel, buttonClassNam
           </div>
           <div className="glossary-popover__row">
             <span className="eyebrow">粵拼</span>
-            <strong>{entry.jyutping}</strong>
+            <strong>
+              <InteractiveJyutping jyutping={entry.jyutping} speechText={entry.headword} />
+            </strong>
           </div>
           <div className="glossary-popover__row">
             <span className="eyebrow">普通話說明</span>

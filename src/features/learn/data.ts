@@ -33,6 +33,14 @@ const glossaryById = content.glossary.reduce<Record<string, GlossaryEntry>>((res
   return result;
 }, {});
 
+const glossaryByJyutping = content.glossary.reduce<Record<string, GlossaryEntry>>((result, entry) => {
+  const normalized = entry.jyutping.trim().toLowerCase();
+  if (normalized && !result[normalized]) {
+    result[normalized] = entry;
+  }
+  return result;
+}, {});
+
 const audioById = content.audio.reduce<Record<string, AudioAsset>>((result, asset) => {
   result[asset.id] = asset;
   return result;
@@ -98,6 +106,10 @@ export function getGlossaryEntries(ids: readonly string[] | undefined): Glossary
 
 export function getGlossaryEntry(id: string): GlossaryEntry | undefined {
   return glossaryById[id];
+}
+
+export function findGlossaryEntryByJyutping(jyutping: string): GlossaryEntry | undefined {
+  return glossaryByJyutping[jyutping.trim().toLowerCase()];
 }
 
 export function getAudioAsset(audioId: string | undefined): AudioAsset | undefined {

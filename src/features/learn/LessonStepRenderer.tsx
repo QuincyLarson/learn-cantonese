@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import type {
   CommonCharacterEntry,
   CommonStructureEntry,
@@ -494,7 +495,9 @@ function JyutpingInputCard({
             {exactSuggestions.map((suggestion) => (
               <article key={`${suggestion.token}-${suggestion.displayText}`} className="surface-card">
                 <strong>{text(suggestion.displayText)}</strong>
-                <span className="muted-text">{suggestion.jyutping}</span>
+                <span className="muted-text">
+                  <InteractiveJyutping jyutping={suggestion.jyutping} speechText={suggestion.displayText} />
+                </span>
                 {suggestion.note ? <span className="muted-text">{text(suggestion.note)}</span> : null}
               </article>
             ))}
@@ -509,7 +512,9 @@ function JyutpingInputCard({
             {commonCharacterSuggestions.map((entry) => (
               <article key={entry.id} className="surface-card">
                 <strong>{text(entry.character)}</strong>
-                <span className="muted-text">{entry.jyutping}</span>
+                <span className="muted-text">
+                  <InteractiveJyutping jyutping={entry.jyutping} speechText={entry.character} />
+                </span>
               </article>
             ))}
           </div>
@@ -523,7 +528,9 @@ function JyutpingInputCard({
             {commonStructureSuggestions.map((entry) => (
               <article key={entry.id} className="surface-card">
                 <strong>{text(entry.text)}</strong>
-                <span className="muted-text">{entry.jyutping}</span>
+                <span className="muted-text">
+                  <InteractiveJyutping jyutping={entry.jyutping} speechText={entry.text} />
+                </span>
                 <span className="muted-text">{text(commonStructureKindLabel[entry.kind])}</span>
               </article>
             ))}
@@ -538,7 +545,12 @@ function JyutpingInputCard({
             {matchingPhrases.map((phrase) => (
               <article key={phrase.input} className="surface-card">
                 <strong>{text(phrase.displayText)}</strong>
-                <span className="muted-text">{normalizeJyutpingInput(phrase.input)}</span>
+                <span className="muted-text">
+                  <InteractiveJyutping
+                    jyutping={normalizeJyutpingInput(phrase.input)}
+                    speechText={phrase.displayText}
+                  />
+                </span>
                 {phrase.note ? <span className="muted-text">{text(phrase.note)}</span> : null}
               </article>
             ))}
@@ -674,7 +686,12 @@ export function LessonStepRenderer({
           busy={busy}
           beforeChoices={
             <div className="prompt-display-shell">
-              <p className="prompt-display prompt-display--jyutping">{step.syllable}</p>
+              <p className="prompt-display prompt-display--jyutping">
+                <InteractiveJyutping
+                  jyutping={step.syllable}
+                  speechText={step.audioId ? getAudioAsset(step.audioId)?.transcript : undefined}
+                />
+              </p>
               {step.audioId ? <AudioButton asset={getAudioAsset(step.audioId)} label={text('播放音節')} compact /> : null}
             </div>
           }

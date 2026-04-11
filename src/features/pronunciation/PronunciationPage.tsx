@@ -1,27 +1,87 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { InteractiveJyutping, JyutpingAwareText } from '@/components/InteractiveJyutping';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import { primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
-import { useSettingsState } from '@/features/progress';
+import { markLessonCompleted, useProgressState, useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
+import { getLastLessonRoute } from '@/lib/navigationState';
+import { cantoneseSentenceLessons } from '@/features/cantoneseSentences';
+import {
+  getPronunciationLessonById,
+  getPronunciationLessonProgressId,
+  pronunciationLessons,
+  toneExamples,
+} from './data';
 import { ToneContourSvg } from './ToneContourSvg';
 
-const toneExamples = [
-  { tone: 1, jyutping: 'si1', character: '詩', note: '高平' },
-  { tone: 2, jyutping: 'si2', character: '史', note: '高升' },
-  { tone: 3, jyutping: 'si3', character: '試', note: '中平' },
-  { tone: 4, jyutping: 'si4', character: '時', note: '低降' },
-  { tone: 5, jyutping: 'si5', character: '市', note: '低升' },
-  { tone: 6, jyutping: 'si6', character: '是', note: '低平' },
-] as const;
+type InputState = 'idle' | 'typing' | 'wrong' | 'correct';
 
-const initialsDifferentFromPinyin = ['z', 'c', 'j', 'gw', 'kw', 'ng'] as const;
-const finalsDifferentFromPinyin = ['aa', 'oe', 'eoi', 'yu', 'oek', 'oeng'] as const;
+function classifyJyutpingInput(input: string, answer: string): InputState {
+  const normalizedInput = input.trim().toLowerCase();
+  const answerTokens = answer.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  if (!normalizedInput) {
+    return 'idle';
+  }
+
+  let inputIndex = 0;
+
+  for (let tokenIndex = 0; tokenIndex < answerTokens.length; tokenIndex += 1) {
+    while (normalizedInput[inputIndex] === ' ') {
+      inputIndex += 1;
+    }
+
+    const token = answerTokens[tokenIndex];
+
+    for (let charIndex = 0; charIndex < token.length; charIndex += 1) {
+      if (inputIndex >= normalizedInput.length) {
+        return 'typing';
+      }
+
+      const nextCharacter = normalizedInput[inputIndex];
+      if (nextCharacter === ' ' || nextCharacter !== token[charIndex]) {
+        return 'wrong';
+      }
+
+      inputIndex += 1;
+    }
+
+    if (inputIndex >= normalizedInput.length) {
+      return tokenIndex === answerTokens.length - 1 ? 'correct' : 'typing';
+    }
+  }
+
+  while (inputIndex < normalizedInput.length) {
+    if (normalizedInput[inputIndex] !== ' ') {
+      return 'wrong';
+    }
+
+    inputIndex += 1;
+  }
+
+  return 'correct';
+}
+
+function getPronunciationResumeRoute() {
+  const lastLessonRoute = getLastLessonRoute();
+  if (lastLessonRoute?.startsWith('/pronunciation/lesson/')) {
+    return lastLessonRoute;
+  }
+
+  return `/pronunciation/lesson/${pronunciationLessons[0]?.id ?? ''}`;
+}
 
 export function PronunciationPage() {
+  const { lessonId } = useParams();
+  const navigate = useNavigate();
+  const progress = useProgressState();
   const { scriptPreference, playbackSpeed } = useSettingsState();
   const text = useScriptText(scriptPreference);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [activeTone, setActiveTone] = useState<number>(1);
+  const [value, setValue] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [typingFeedback, setTypingFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     primeSpeechVoices();
@@ -31,10 +91,52 @@ export function PronunciationPage() {
     };
   }, []);
 
+  if (!lessonId) {
+    return <Navigate to={getPronunciationResumeRoute()} replace />;
+  }
+
+  const lesson = getPronunciationLessonById(lessonId);
+  if (!lesson) {
+    return <Navigate to={getPronunciationResumeRoute()} replace />;
+  }
+
+  const lessonIndex = pronunciationLessons.findIndex((entry) => entry.id === lesson.id);
+  const nextLesson = lessonIndex >= 0 && lessonIndex < pronunciationLessons.length - 1
+    ? pronunciationLessons[lessonIndex + 1]
+    : undefined;
+  const nextRoute = nextLesson
+    ? `/pronunciation/lesson/${nextLesson.id}`
+    : cantoneseSentenceLessons[0]
+      ? `/cantonese-sentences/lesson/${cantoneseSentenceLessons[0].id}`
+      : '/curriculum';
+  const completionId = getPronunciationLessonProgressId(lesson.id);
+  const completed = progress.completedLessonIds.includes(completionId);
   const activeExample = useMemo(
     () => toneExamples.find((example) => example.tone === activeTone) ?? toneExamples[0],
     [activeTone],
   );
+  const typingCard = lesson.labCards[0];
+  const inputState = typingCard ? classifyJyutpingInput(value, typingCard.jyutping) : 'idle';
+  const canAdvance = inputState === 'correct' || revealed;
+
+  useEffect(() => {
+    setValue('');
+    setRevealed(false);
+    setTypingFeedback(null);
+  }, [lesson.id]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [lesson.id]);
+
+  useEffect(() => {
+    if (inputState !== 'correct' || revealed) {
+      return;
+    }
+
+    setTypingFeedback(text('答啱。'));
+    speakText(typingCard.text, playbackSpeed);
+  }, [inputState, playbackSpeed, revealed, text, typingCard.text]);
 
   function handleTonePreview(tone: number) {
     const example = toneExamples.find((item) => item.tone === tone) ?? toneExamples[0];
@@ -42,108 +144,139 @@ export function PronunciationPage() {
     speakText(example.character, playbackSpeed);
   }
 
+  function handleComplete() {
+    if (!canAdvance) {
+      return;
+    }
+
+    markLessonCompleted({ lessonId: completionId, revisited: completed });
+    navigate(nextRoute);
+  }
+
+  function handleReveal() {
+    if (!typingCard) {
+      return;
+    }
+
+    speakText(typingCard.text, playbackSpeed);
+    setRevealed(true);
+    setTypingFeedback(text('答案已顯示。'));
+  }
+
   return (
     <div className="chapter-page">
       <section className="chapter-page__section chapter-page__section--lead">
-        <h1>{text('第 1 章 粵拼同發音')}</h1>
-        <p>
-          {text(
-            '呢一章唔講背句子，先只做一件事：用粵拼把廣東話嘅聲母、韻母同聲調釘穩。你已經識漢字，所以我哋直接由聲音系統入手，唔畀你靠其他拼音系統兜路。',
-          )}
+        <p className="curriculum-book-page__eyebrow">
+          {text(`第 ${lesson.number} 課`)}
         </p>
+        <div className="pronunciation-lesson-page__head">
+          <div>
+            <h1>{text(lesson.title)}</h1>
+            <p>{text(lesson.summary)}</p>
+          </div>
+          {completed ? <span className="pronunciation-lesson-page__status">{text('已完成')}</span> : null}
+        </div>
+        <p className="chapter-page__note">{text(lesson.teacherNote)}</p>
+      </section>
+
+      {lesson.id === 'tone-anchor' ? (
+        <section className="chapter-page__section">
+          <h2>{text('六聲示範')}</h2>
+          <div className="tone-trainer">
+            <ToneContourSvg activeTone={activeTone} />
+            <div className="tone-trainer__controls" role="group" aria-label={text('六聲例字')}>
+              {toneExamples.map((example) => (
+                <button
+                  key={example.tone}
+                  type="button"
+                  className={example.tone === activeTone ? 'tone-button is-active' : 'tone-button'}
+                  onClick={() => handleTonePreview(example.tone)}
+                >
+                  <span className="tone-button__character">{text(example.character)}</span>
+                  <span className="tone-button__jyutping">{example.jyutping}</span>
+                  <span className="tone-button__note">{text(example.note)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="chapter-page__note">
+            {text('而家揀緊 ')}
+            <InteractiveJyutping jyutping={activeExample.jyutping} speechText={activeExample.character} />
+            {text(`：${activeExample.character}`)}
+          </p>
+        </section>
+      ) : null}
+
+      <section className="chapter-page__section">
+        <h2>{text('本課例字')}</h2>
+        <div className="pronunciation-example-row" aria-label={text(`${lesson.title} 例字`)}>
+          {lesson.examples.map((example) => (
+            <div key={`${lesson.id}-${example.text}-${example.jyutping}`} className="pronunciation-example-chip">
+              <strong>{text(example.text)}</strong>
+              <InteractiveJyutping jyutping={example.jyutping} speechText={example.text} />
+              <span>{text(example.note)}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="chapter-page__section">
-        <h2>{text('先固定一個聲母同一個韻母，淨學六聲')}</h2>
-        <p>
-          <JyutpingAwareText
-            text={text(
-              '先用 s + i 呢一組，連續聽、睇、讀 si1 到 si6。聲調一開始分得清，之後記字音先唔會一齊歪。按下面任何一個例字，就會播音，同時圖上會亮返嗰條聲調線。',
-            )}
-            resolveSpeechText={(jyutping) => toneExamples.find((example) => example.jyutping === jyutping)?.character}
-          />
-        </p>
-
-        <div className="tone-trainer">
-          <ToneContourSvg activeTone={activeTone} />
-          <div className="tone-trainer__controls" role="group" aria-label={text('六聲例字')}>
-            {toneExamples.map((example) => (
-              <button
-                key={example.tone}
-                type="button"
-                className={example.tone === activeTone ? 'tone-button is-active' : 'tone-button'}
-                onClick={() => handleTonePreview(example.tone)}
-              >
-                <span className="tone-button__character">{text(example.character)}</span>
-                <span className="tone-button__jyutping">{example.jyutping}</span>
-                <span className="tone-button__note">{text(example.note)}</span>
+        <h2>{text('打一次粵拼先過關')}</h2>
+        <div className="pronunciation-lab">
+          <div className="pronunciation-lab__card">
+            <div className="pronunciation-lab__prompt">{text(typingCard.text)}</div>
+            <div className="pronunciation-lab__note">{text(typingCard.note)}</div>
+          </div>
+          <label className="input-field pronunciation-lab__input">
+            <span className="muted-text">{text('輸入粵拼')}</span>
+            <input
+              ref={inputRef}
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+                if (!revealed) {
+                  setTypingFeedback(null);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && canAdvance) {
+                  event.preventDefault();
+                  handleComplete();
+                }
+              }}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label={text('輸入本課檢查點的粵拼')}
+              className={inputState === 'wrong' ? 'is-invalid' : inputState === 'correct' ? 'is-valid' : undefined}
+            />
+          </label>
+          {revealed || inputState === 'correct' ? (
+            <div className="pronunciation-lab__answer" role="status" aria-live="polite">
+              <strong>{text('標準答案')}</strong>
+              <span>
+                <InteractiveJyutping jyutping={typingCard.jyutping} speechText={typingCard.text} />
+              </span>
+            </div>
+          ) : null}
+          {typingFeedback ? (
+            <div className="vocab-feedback" role="status" aria-live="polite">
+              {typingFeedback}
+            </div>
+          ) : null}
+          <div className="chapter-page__actions">
+            {!canAdvance ? (
+              <button type="button" className="button button--secondary" onClick={handleReveal}>
+                {text('睇答案')}
               </button>
-            ))}
-          </div>
-        </div>
-
-        <p className="chapter-page__note">
-          {text('而家揀緊 ')}
-          <InteractiveJyutping jyutping={activeExample.jyutping} speechText={activeExample.character} />
-          {text(`：${activeExample.character}。先固定一組音，再把六個聲調聽清楚。`)}
-        </p>
-      </section>
-
-      <section className="chapter-page__section">
-        <h2>{text('只處理同普通話拼音唔一樣嘅位')}</h2>
-        <p>
-          {text(
-            '其餘同普通話接近嘅聲母同韻母先唔浪費時間拆開講。呢一章只搶最易把普通話讀法帶入粵語嗰幾組，先建立正確框架，之後再擴到所有常用字。',
-          )}
-        </p>
-
-        <div className="pronunciation-difference">
-          <div>
-            <h3>{text('先學呢幾個聲母')}</h3>
-            <p className="pronunciation-chip-row">
-              {initialsDifferentFromPinyin.map((initial) => (
-                <span key={initial} className="jp-chip">
-                  {initial}
-                </span>
-              ))}
-            </p>
-          </div>
-
-          <div>
-            <h3>{text('先學呢幾個韻母')}</h3>
-            <p className="pronunciation-chip-row">
-              {finalsDifferentFromPinyin.map((final) => (
-                <span key={final} className="jp-chip">
-                  {final}
-                </span>
-              ))}
-            </p>
+            ) : null}
+            <button type="button" className="button button--primary" onClick={handleComplete} disabled={!canAdvance}>
+              {text('去下一課')}
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="chapter-page__section">
-        <h2>{text('每學完一組，就做發音 lab')}</h2>
-        <p>
-          {text(
-            '完成每一組聲母、韻母或者聲調之後，馬上做兩種 lab。第一種係見字打粵拼，證明你真係記得到音點寫；第二種係跟住讀出聲，再聽返自己同標準音對比，盡早修正聲母、韻母同聲調。',
-          )}
-        </p>
-        <p>
-          {text(
-            '自動評估廣東話發音嘅技術係有，但喺純靜態網站上未夠穩陣，尤其係要可靠分清聲母、韻母同聲調。現階段會以錄音、重播、自評為主，將來再加可選嘅網上評分，而且唔會拎嚟卡課程進度。',
-          )}
-        </p>
-
-        <div className="chapter-page__actions">
-          <Link className="button button--primary" to="/vocab">
-            {text('去做粵拼打字 lab')}
-          </Link>
-          <Link className="button button--secondary" to="/cantonese-sentences">
-            {text('睇第 2 章')}
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

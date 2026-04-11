@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { InteractiveJyutping } from '@/components/InteractiveJyutping';
 import { getAudioSource, primeSpeechVoices, speakText, stopSpeechPlayback } from '@/features/audio/audio';
 import { GlossaryPopover } from '@/features/glossary/GlossaryPopover';
@@ -7,7 +7,7 @@ import { findAudioAssetByText } from '@/features/learn/data';
 import { recordCantoneseSentenceCompletion, resetCantoneseSentenceLesson, useProgressState, useSettingsState } from '@/features/progress';
 import { isTypingTarget } from '@/lib/dom';
 import { useScriptText } from '@/lib/script';
-import { getCantoneseSentenceCardsForLesson, getCantoneseSentenceLesson } from './data';
+import { cantoneseSentenceLessons, getCantoneseSentenceCardsForLesson, getCantoneseSentenceLesson } from './data';
 import { projectSentenceCardAfterCompletion, selectNextSentenceCard } from './scheduler';
 
 type InputState = 'idle' | 'typing' | 'correct' | 'wrong';
@@ -60,6 +60,7 @@ function classifyJyutpingInput(input: string, answer: string): InputState {
 
 export function CantoneseSentencesPage() {
   const { lessonId } = useParams();
+  const navigate = useNavigate();
   const progress = useProgressState();
   const { scriptPreference, playbackSpeed } = useSettingsState();
   const text = useScriptText(scriptPreference);
@@ -106,6 +107,11 @@ export function CantoneseSentencesPage() {
   if (!lesson) {
     return <Navigate to="/cantonese-sentences" replace />;
   }
+
+  const lessonIndex = cantoneseSentenceLessons.findIndex((entry) => entry.id === lesson.id);
+  const nextLesson = lessonIndex >= 0 && lessonIndex < cantoneseSentenceLessons.length - 1
+    ? cantoneseSentenceLessons[lessonIndex + 1]
+    : undefined;
 
   useEffect(() => {
     primeSpeechVoices();
@@ -248,9 +254,13 @@ export function CantoneseSentencesPage() {
               >
                 {text('再練本課')}
               </button>
-              <Link className="button button--secondary" to="/cantonese-sentences">
-                {text('返回分組')}
-              </Link>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => navigate(nextLesson ? `/cantonese-sentences/lesson/${nextLesson.id}` : '/curriculum')}
+              >
+                {text('去下一課')}
+              </button>
             </div>
           </div>
         </section>

@@ -7,6 +7,7 @@ export const APP_SCHEMA_VERSION = 1 as const;
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
 export const DEFAULT_SCRIPT_PREFERENCE: ScriptPreference = 'traditional';
 export const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 1;
+export const DEFAULT_VOCAB_TIER_START_RANK = 1;
 
 export function createDefaultAppState(): AppState {
   return {
@@ -53,6 +54,7 @@ export function createDefaultAppState(): AppState {
       themePreference: DEFAULT_THEME_PREFERENCE,
       scriptPreference: DEFAULT_SCRIPT_PREFERENCE,
       playbackSpeed: DEFAULT_PLAYBACK_SPEED,
+      vocabTierStartRank: DEFAULT_VOCAB_TIER_START_RANK,
     },
   };
 }

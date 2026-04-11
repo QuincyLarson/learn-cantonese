@@ -3,19 +3,6 @@ import { useSettingsState } from '@/features/progress';
 import { useScriptText } from '@/lib/script';
 import { getAdjacentCurriculumBooks, getCurriculumBookById, getCurriculumBookPosition } from './catalog';
 
-function getPracticeLabel(unitId: string): string {
-  switch (unitId) {
-    case 'unit1':
-      return '進入發音練習';
-    case 'unit2':
-      return '進入句式練習';
-    case 'vocab':
-      return '進入詞彙練習';
-    default:
-      return '進入練習';
-  }
-}
-
 function getBookIntro(unitId: string, title: string, summary: string): string[] {
   if (unitId === 'unit1') {
     return [
@@ -76,7 +63,7 @@ export function CurriculumBookPage() {
   }
 
   const position = getCurriculumBookPosition(book.id);
-  const { previousBook, nextBook } = getAdjacentCurriculumBooks(book.id);
+  const { nextBook } = getAdjacentCurriculumBooks(book.id);
   const introParagraphs = getBookIntro(book.unitId, book.title, book.summary);
   const methodSteps = getBookMethod(book.unitId);
 
@@ -113,28 +100,10 @@ export function CurriculumBookPage() {
       </section>
 
       <section className="curriculum-book-page__actions">
-        {book.practiceRoute ? (
-          <Link className="button button--primary" to={book.practiceRoute}>
-            {text(getPracticeLabel(book.unitId))}
-          </Link>
-        ) : null}
-        <Link className="button button--secondary" to="/curriculum">
-          {text('返回課程')}
+        <Link className="button button--primary" to={nextBook?.route ?? '/curriculum'}>
+          {text(nextBook ? '去下一課' : '返回課程')}
         </Link>
       </section>
-
-      <nav className="curriculum-book-page__nav" aria-label={text('課程導航')}>
-        {previousBook ? (
-          <Link className="button button--secondary" to={previousBook.route ?? '/curriculum'}>
-            {text(`上一課：${previousBook.title}`)}
-          </Link>
-        ) : <span />}
-        {nextBook ? (
-          <Link className="button button--secondary" to={nextBook.route ?? '/curriculum'}>
-            {text(`下一課：${nextBook.title}`)}
-          </Link>
-        ) : null}
-      </nav>
     </div>
   );
 }

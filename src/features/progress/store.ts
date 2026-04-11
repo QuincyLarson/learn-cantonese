@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { isVocabSessionExpired, projectVocabCardAfterAttempt } from '@/features/vocab/scheduler';
 import { projectSentenceCardAfterCompletion } from '@/features/cantoneseSentences/scheduler';
+import { clampVocabTierStartRank } from '@/features/vocab/tiers';
 
 type Listener = () => void;
 
@@ -455,6 +456,7 @@ export function normalizeSettings(input: unknown): SettingsState {
     themePreference: normalizeThemePreference(input.themePreference),
     scriptPreference: normalizeScriptPreference(input.scriptPreference),
     playbackSpeed: clampPlaybackSpeed(input.playbackSpeed),
+    vocabTierStartRank: clampVocabTierStartRank(input.vocabTierStartRank),
   };
 }
 
@@ -941,6 +943,16 @@ export function updateSettings(patch: Partial<SettingsState>): AppState {
     settings: {
       ...current.settings,
       ...patch,
+    },
+  }));
+}
+
+export function setVocabTierStartRank(vocabTierStartRank: number): AppState {
+  return setAppState((current) => ({
+    ...current,
+    settings: {
+      ...current.settings,
+      vocabTierStartRank: clampVocabTierStartRank(vocabTierStartRank),
     },
   }));
 }

@@ -109,6 +109,7 @@ export interface SettingsState {
   themePreference: ThemePreference;
   scriptPreference: ScriptPreference;
   playbackSpeed: PlaybackSpeed;
+  vocabTierStartRank: number;
 }
 
 export interface AppState {

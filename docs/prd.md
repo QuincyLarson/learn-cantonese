@@ -1481,3 +1481,154 @@ Locked decisions:
 - first implementation deep enough for a polished A1 slice
 
 This PRD is the source of truth for the first Codex implementation prompt.
+
+---
+
+## 36. Immediate execution priorities after foundation
+
+The platform foundation now exists, but the next work must focus on **curriculum depth** instead of more scaffolding.
+
+Future agents should treat the following as the active execution order.
+
+### 36.1 Priority 1: Turn Chapter 1 into a real pronunciation course
+
+Chapter 1 must stop being an overview page and become a real ordered lesson sequence with drills.
+
+What still needs to be true:
+- every high-value pronunciation contrast has a learner-facing lesson
+- each lesson has a few high-frequency example characters or words
+- each lesson ends in immediate action, not just explanation
+- the learner repeatedly types Jyutping and hears correct audio
+- read-aloud / repeat-machine practice becomes a first-class part of the chapter
+
+Required lesson coverage for the first serious pass:
+- six tones with one fixed syllable
+- n / l
+- z / c / s
+- j as a separate Cantonese sound
+- gw / kw
+- ng vs zero onset
+- aa vs a
+- oe / eoi / yu
+- stop-final syllables with p / t / k
+- minimal-pair tone review
+- mixed review
+- transition from single words into short phrases
+
+Execution rule:
+- build these as real lessons with actual drills before expanding decorative overview text
+
+Definition of done for this priority:
+- Chapter 1 contains a visible ordered lesson sequence
+- learners can complete real typing drills inside Chapter 1
+- the chapter no longer depends on one generic explanation page
+
+### 36.2 Priority 2: Make Chapter 2 systematically target Mandarin interference
+
+Chapter 2 should be written like a Hong Kong teacher helping Mandarin speakers stop sounding like they are translating.
+
+Future work should prioritize:
+- Cantonese-only function words
+- common colloquial verbs and nouns that replace Mandarin-like choices
+- sentence patterns where Mandarin learners reliably over-transfer
+- high-frequency Hong Kong everyday language
+
+Mandatory high-frequency targets include:
+- 係 / 喺
+- 冇 / 唔
+- 咗
+- 呢 / 嗰 / 啲
+- 佢 / 哋
+- 嘅 / 咩 / 嚟 / 喎 / 啫 / 囉
+- 而家 / 返工 / 收工 / 返屋企 / 鎖匙 / 荷包 / 雪櫃 / 𨋢 / 埋單 / 走冰 / 行街 / 吹水
+
+Execution rule:
+- every new Chapter 2 lesson must be justified by likely Mandarin-speaker confusion, not by abstract grammar coverage
+
+Definition of done for this priority:
+- Chapter 2 has broad cluster coverage for daily life, service interactions, office small talk, shopping, food, and transport
+- the learner can infer sentence meaning from context while focusing on the Cantonese-specific item
+
+### 36.3 Priority 3: Replace generic Chinese frequency with Cantonese-native frequency
+
+The current 5k / 10k vocabulary base is useful but not yet a true Cantonese-native frequency deck.
+
+This must eventually be replaced or corrected using a Cantonese-oriented corpus so that:
+- endless mode reflects actual Cantonese frequency
+- Cantonese-specific high-frequency characters are guaranteed coverage
+- the long-tail C1 / C2 path is not distorted by Mandarin-heavy frequency artifacts
+
+Execution rule:
+- do not claim full Cantonese frequency coverage until the source corpus is actually Cantonese-native
+
+Definition of done for this priority:
+- the 5k character layer and 10k structure layer are derived from or corrected against Cantonese usage data
+- Cantonese-specific items are tagged explicitly and coverage can be measured
+
+### 36.4 Priority 4: Make the 500-book catalog honest
+
+The current 500-book structure is a useful production scaffold, but many entries are still generated shells that hand off into shared practice surfaces.
+
+Future agents must:
+- convert planned or generic books into real content packets
+- reduce or remove misleading production claims if the content is not yet real
+- keep book summaries short and one-line
+- preserve linearity for the learner
+
+Execution rule:
+- either materialize a book into real lesson content or clearly treat it as planned work
+
+Definition of done for this priority:
+- the curriculum page reflects genuine built content, not inflated counts
+
+### 36.5 Priority 5: Strengthen read-aloud labs
+
+Typing is core, but pronunciation training also needs strong ear-mouth feedback loops.
+
+Future agents should expand:
+- repeat machine inside Chapter 1
+- target audio -> learner recording -> replay target -> replay learner
+- explicit self-rating
+- later optional speech assessment integration
+
+Important constraint:
+- any automated scoring must stay optional and must never gate progression in the static core product
+
+Definition of done for this priority:
+- early Chapter 1 lessons visibly include read-aloud comparison work, not only typing
+
+### 36.6 Priority 6: Produce curated bundled audio
+
+Browser speech is acceptable for prototype support, but the production target remains bundled audio.
+
+Future agents should:
+- replace fallback-only flows in core lessons with curated static audio assets
+- keep one consistent male and one consistent female speaker identity
+- spot-check every shipped asset
+
+Definition of done for this priority:
+- core lessons in Chapter 1 and Chapter 2 do not depend on runtime browser TTS for their main instructional audio
+
+### 36.7 Priority 7: QA, accessibility, and performance cleanup
+
+The app must remain usable as the curriculum expands.
+
+Future work should include:
+- browser QA on laptop and mobile
+- keyboard-only QA
+- screen reader spot checks
+- chunk splitting for large lazy-loaded vocabulary bundles
+- content validation and route sanity checks
+
+Definition of done for this priority:
+- the expanded curriculum remains fast, accessible, and stable on GitHub Pages
+
+### 36.8 Agent handoff rules
+
+Future agents continuing this PRD should follow these rules:
+- prefer depth in Chapter 1 and Chapter 2 over adding more empty scaffolding
+- prefer one real completed lesson over ten placeholder lessons
+- keep all learner-facing explanation concise
+- use Mandarin-speaker confusion as the primary content-selection heuristic
+- keep the learner-facing structure simple: Chapter 1, Chapter 2, endless practice
+- keep content static, GitHub Pages compatible, and local-storage based

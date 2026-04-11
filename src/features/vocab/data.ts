@@ -50,6 +50,8 @@ const mandarinLikeStructurePatterns = [
   /今天/u,
 ];
 
+const PROMPT_MIN_LENGTH = 2;
+
 export type VocabPrompt = {
   id: string;
   rank: number;
@@ -66,6 +68,10 @@ let cachedPrompts: VocabPrompt[] | null = null;
 
 function normalizeJyutping(input: string) {
   return input.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function countPromptGlyphs(input: string) {
+  return Array.from(input.replace(/\s+/g, '')).length;
 }
 
 function buildCharacterMap(characters: readonly CommonCharacterEntry[]) {
@@ -111,7 +117,7 @@ function buildRepresentativeStructures(
 
     const sourceGlyphs = Array.from(structure.text.trim());
     const displayGlyphs = Array.from(preferredDisplay.text.trim());
-    if (displayGlyphs.length < 1 || displayGlyphs.length > PROMPT_MAX_LENGTH) {
+    if (displayGlyphs.length < PROMPT_MIN_LENGTH || displayGlyphs.length > PROMPT_MAX_LENGTH) {
       continue;
     }
 
@@ -160,21 +166,26 @@ export async function getVocabPrompts(): Promise<VocabPrompt[]> {
   ]);
   const representativeByCharacterId = buildRepresentativeStructures(characters, structures);
 
-  cachedPrompts = characters.map((character) => {
-    const representative = representativeByCharacterId.get(character.id);
+  cachedPrompts = characters
+    .map((character) => {
+      const representative = representativeByCharacterId.get(character.id);
+      if (!representative || countPromptGlyphs(representative.text) < PROMPT_MIN_LENGTH) {
+        return null;
+      }
 
-    return {
-      id: `vocab:${character.id}`,
-      rank: character.rank,
-      text: representative?.text ?? character.character,
-      simplified: representative?.simplified ?? character.simplified,
-      jyutping: representative?.jyutping ?? normalizeJyutping(character.jyutping),
-      characters: representative?.characters ?? [character.character],
-      focusCharacterId: character.id,
-      focusCharacter: character.character,
-      focusSimplified: character.simplified,
-    };
-  });
+      return {
+        id: `vocab:${character.id}`,
+        rank: character.rank,
+        text: representative.text,
+        simplified: representative.simplified,
+        jyutping: representative.jyutping,
+        characters: representative.characters,
+        focusCharacterId: character.id,
+        focusCharacter: character.character,
+        focusSimplified: character.simplified,
+      };
+    })
+    .filter((prompt): prompt is VocabPrompt => Boolean(prompt));
 
   return cachedPrompts;
 }

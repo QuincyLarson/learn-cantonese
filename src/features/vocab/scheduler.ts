@@ -8,6 +8,8 @@ const SECOND_LEARNING_INTERVAL = 6;
 const REVIEW_GRADUATING_INTERVAL = 12;
 const NEW_CARD_BURST = 6;
 const DUE_REVIEW_THRESHOLD = 4;
+const NEW_CARD_VARIATION_WINDOW = 12;
+const DUE_CARD_VARIATION_WINDOW = 6;
 export const VOCAB_SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 
 export const VOCAB_MASTERY_HEARTS = 3;
@@ -176,7 +178,17 @@ export function projectVocabCardAfterAttempt(
 export function chooseNextVocabPrompt(
   prompts: readonly VocabPrompt[],
   progress: VocabProgressState,
+  sessionSalt = 0,
 ): VocabSelection {
+  const pickSessionOffset = (length: number, turnOffset = 0) => {
+    if (length <= 1) {
+      return 0;
+    }
+
+    const seed = (((sessionSalt + 1) * 2654435761) + ((progress.reviewTurn + turnOffset + 1) * 1013904223)) >>> 0;
+    return seed % length;
+  };
+
   const promptIndexById = new Map(prompts.map((prompt, index) => [prompt.id, index]));
   const sessionCorrectCardIds = new Set(getActiveSessionCorrectCardIds(progress));
   const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
@@ -219,7 +231,7 @@ export function chooseNextVocabPrompt(
     });
 
   const dueCount = dueEntries.length;
-  const nextNewSelection = prompts.find((prompt, index) => {
+  const isEligibleNewPrompt = (prompt: VocabPrompt, index: number) => {
     if (index < progress.nextNewCardIndex) {
       return false;
     }
@@ -234,9 +246,36 @@ export function chooseNextVocabPrompt(
     }
 
     return !entry || entry.seenCount === 0;
-  });
-  const nextNewPrompt = nextNewSelection;
-  const nextNewDeckIndex = nextNewPrompt ? promptIndexById.get(nextNewPrompt.id) : undefined;
+  };
+  const eligibleNewPrompts = prompts.filter(isEligibleNewPrompt);
+  const wrappedEligibleNewPrompts =
+    eligibleNewPrompts.length > 0
+      ? eligibleNewPrompts
+      : progress.nextNewCardIndex > 0
+        ? prompts.filter((prompt) => {
+            const entry = progress.cardStats[prompt.id];
+            if (entry?.masteryLevel && entry.masteryLevel >= VOCAB_MASTERY_HEARTS) {
+              return false;
+            }
+
+            if (sessionCorrectPromptSignatures.has(getPromptSessionSignature(prompt))) {
+              return false;
+            }
+
+            return !entry || entry.seenCount === 0;
+          })
+        : [];
+  const nextNewWindow = wrappedEligibleNewPrompts.slice(0, NEW_CARD_VARIATION_WINDOW);
+  const nextNewPrompt =
+    nextNewWindow.length > 0
+      ? nextNewWindow[pickSessionOffset(nextNewWindow.length)]
+      : undefined;
+  const wrappedForNewSelection = eligibleNewPrompts.length === 0 && wrappedEligibleNewPrompts.length > 0;
+  const nextNewDeckIndex = nextNewPrompt
+    ? wrappedForNewSelection
+      ? promptIndexById.get(nextNewPrompt.id)
+      : progress.nextNewCardIndex
+    : undefined;
   const hasDueLearningCards = dueEntries.some(([, entry]) => entry.status === 'learning');
   const canIntroduceNewCard =
     Boolean(nextNewPrompt) &&
@@ -248,7 +287,8 @@ export function chooseNextVocabPrompt(
   }
 
   if (dueEntries.length > 0) {
-    const [cardId, entry] = dueEntries[0];
+    const dueWindow = dueEntries.slice(0, DUE_CARD_VARIATION_WINDOW);
+    const [cardId, entry] = dueWindow[pickSessionOffset(dueWindow.length, 17)];
     return {
       prompt: promptById.get(cardId) ?? null,
       queue: entry.status === 'review' ? 'review' : 'learning',

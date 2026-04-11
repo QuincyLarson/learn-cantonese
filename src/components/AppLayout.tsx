@@ -76,10 +76,16 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           <div className="topbar__controls">
             <NavLink
+              to="/practice"
+              className={({ isActive }) => (isActive ? 'navlink navlink--utility is-active' : 'navlink navlink--utility')}
+            >
+              {text('練習')}
+            </NavLink>
+            <NavLink
               to="/settings"
               className={({ isActive }) => (isActive ? 'navlink navlink--utility is-active' : 'navlink navlink--utility')}
             >
-              {text('統計')}
+              {text('設定')}
             </NavLink>
             <div className="topbar__switches" role="group" aria-label={text('顯示設定')}>
               <HeaderSwitch

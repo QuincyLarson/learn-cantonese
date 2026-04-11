@@ -1,32 +1,23 @@
 import type { CSSProperties, ChangeEvent } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   exportAppStateJson,
   importAppStateJson,
   resetAppState,
-  setExperimentalFlag,
   setPlaybackSpeed,
   setScriptPreference,
   setThemePreference,
+  setVocabTierStartRank,
   useAppState,
 } from '../progress';
 import type { AppState } from '../progress';
 import { PlaybackSpeedToggle, ScriptPreferenceToggle, ThemePreferenceToggle } from './PreferenceControls';
 import { SettingsOnboardingCallout } from './SettingsOnboardingCallout';
-import { COMMON_CHARACTER_COUNT } from '@/features/learn/commonCharacters';
-import { COMMON_STRUCTURE_COUNT } from '@/features/learn/commonStructures';
 import { useScriptText } from '@/lib/script';
 import { countDueVocabCards } from '@/features/vocab/scheduler';
-import {
-  CANTONESE_SENTENCE_CARD_COUNT,
-  CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT,
-  getCantoneseSentenceCoverageCount,
-} from '@/features/cantoneseSentences/data';
-import {
-  CANTONESE_SPECIFIC_CHARACTER_COUNT,
-  CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT,
-} from '@/features/cantoneseSentences/cantoneseSpecificCharacters';
-import { countDueSentenceCards, countMasteredSentenceCards } from '@/features/cantoneseSentences/scheduler';
+import { getVocabTierLabel, getVocabTierOptions } from '@/features/vocab/tiers';
+import { getPronunciationLessonProgressId, pronunciationLessons } from '@/features/pronunciation/data';
+import { cantoneseSentenceLessons } from '@/features/cantoneseSentences';
 
 const pageStyle: CSSProperties = {
   display: 'grid',
@@ -38,7 +29,7 @@ const pageStyle: CSSProperties = {
 const shellStyle: CSSProperties = {
   display: 'grid',
   gap: '1rem',
-  maxWidth: '72rem',
+  maxWidth: '56rem',
   width: '100%',
   margin: '0 auto',
 };
@@ -59,7 +50,7 @@ const sectionStyle: CSSProperties = {
 
 const statGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))',
   gap: '0.75rem',
 };
 
@@ -86,6 +77,16 @@ const actionRowStyle: CSSProperties = {
   gap: '0.75rem',
 };
 
+const selectStyle: CSSProperties = {
+  minHeight: '2.75rem',
+  borderRadius: '0.875rem',
+  border: '1px solid var(--settings-border, #d6d8de)',
+  padding: '0.6rem 0.8rem',
+  font: 'inherit',
+  background: 'var(--settings-surface, #ffffff)',
+  color: 'inherit',
+};
+
 function downloadJson(filename: string, json: string): void {
   const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -108,35 +109,29 @@ function tryImportAppState(input: string): boolean {
   }
 }
 
+function countCompletedSentenceLessons(
+  sentenceStats: Record<string, { masteryLevel?: number; correctCount?: number } | undefined>,
+): number {
+  return cantoneseSentenceLessons.filter((lesson) =>
+    lesson.cardIds.every((cardId) => {
+      const stat = sentenceStats[cardId];
+      return Boolean(stat) && (stat?.masteryLevel ?? 0) >= 3;
+    }),
+  ).length;
+}
+
 function statSummary(appState: AppState): Array<{ label: string; value: string }> {
-  const { progress } = appState;
-  const cardEntries = Object.values(progress.vocab.cardStats);
-  const characterEntries = Object.values(progress.vocab.characterStats);
-  const typedCorrect = cardEntries.reduce((sum, entry) => sum + entry.correctCount, 0);
-  const revealedAnswers = cardEntries.reduce((sum, entry) => sum + entry.revealCount, 0);
-  const seenItems = progress.vocab.nextNewCardIndex;
-  const masteredCharacters = characterEntries.filter((entry) => Boolean(entry.masteredAt)).length;
-  const dueReviews = countDueVocabCards(progress.vocab);
-  const completedSentenceCoverage = getCantoneseSentenceCoverageCount(progress.cantoneseSentenceDrill.completedSentenceIds);
-  const dueSentenceReviews = countDueSentenceCards(progress.cantoneseSentenceDrill);
-  const masteredSentences = countMasteredSentenceCards(progress.cantoneseSentenceDrill);
+  const pronunciationCompleted = pronunciationLessons.filter((lesson) =>
+    appState.progress.completedLessonIds.includes(getPronunciationLessonProgressId(lesson.id)),
+  ).length;
+  const grammarCompleted = countCompletedSentenceLessons(appState.progress.cantoneseSentenceDrill.sentenceStats);
+  const dueReviews = countDueVocabCards(appState.progress.vocab);
 
   return [
-    { label: '已掌握常用字', value: `${masteredCharacters}/${COMMON_CHARACTER_COUNT}` },
-    { label: '待複習詞條', value: String(dueReviews) },
-    { label: '已走到', value: `${seenItems}/${COMMON_CHARACTER_COUNT}` },
-    { label: '正確完成', value: String(typedCorrect) },
-    { label: '看答案次數', value: String(revealedAnswers) },
-    { label: '發音完成課數', value: String(progress.completedLessonIds.length) },
-    { label: '發音測驗數', value: String(Object.keys(progress.quizScores).length) },
-    { label: '常用字庫', value: String(COMMON_CHARACTER_COUNT) },
-    { label: '常用搭配', value: String(COMMON_STRUCTURE_COUNT) },
-    { label: '粵字種子', value: String(CANTONESE_SPECIFIC_CHARACTER_COUNT) },
-    { label: '異體總數', value: String(CANTONESE_SPECIFIC_CHARACTER_FORM_COUNT) },
-    { label: '短句已練熟', value: `${masteredSentences}/${CANTONESE_SENTENCE_CARD_COUNT}` },
-    { label: '短句待複習', value: String(dueSentenceReviews) },
-    { label: '短句已覆蓋', value: `${completedSentenceCoverage}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
-    { label: '句組可覆蓋', value: `${CANTONESE_SENTENCE_CHARACTER_COVERAGE_COUNT}/${CANTONESE_SPECIFIC_CHARACTER_COUNT}` },
+    { label: '發音課程', value: `${pronunciationCompleted}/${pronunciationLessons.length}` },
+    { label: '語法用法', value: `${grammarCompleted}/${cantoneseSentenceLessons.length}` },
+    { label: '詞彙已做', value: `${appState.progress.vocab.totalAttempts}` },
+    { label: '待回鍋', value: `${dueReviews}` },
   ];
 }
 
@@ -146,8 +141,8 @@ export function SettingsPage(): JSX.Element {
   const [importText, setImportText] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const stats = statSummary(appState);
+  const vocabTierOptions = useMemo(() => getVocabTierOptions(), []);
 
   function handleExportClick(): void {
     downloadJson('粵語課程進度.json', exportAppStateJson(appState));
@@ -210,19 +205,53 @@ export function SettingsPage(): JSX.Element {
       <div style={shellStyle}>
         <header style={cardStyle}>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
-            <h1 style={{ margin: 0 }}>{text('統計與設定')}</h1>
+            <h1 style={{ margin: 0 }}>{text('設定')}</h1>
             <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('這裡看進度，也可以調整字體、外觀、播放速度與本機儲存。')}
+              {text('調整顯示、播放速度同詞彙範圍，亦可以管理本機進度。')}
             </p>
           </div>
           <SettingsOnboardingCallout />
         </header>
 
-        <section style={cardStyle} aria-labelledby="appearance-title">
+        <section style={cardStyle} aria-labelledby="progress-title">
           <div style={sectionStyle}>
-            <h2 id="appearance-title" style={{ margin: 0 }}>
-              {text('外觀')}
+            <h2 id="progress-title" style={{ margin: 0 }}>
+              {text('重點進度')}
             </h2>
+            <div style={statGridStyle}>
+              {stats.map((stat) => (
+                <article key={stat.label} style={statStyle}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--settings-muted, #586070)' }}>{text(stat.label)}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{text(stat.value)}</div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section style={cardStyle} aria-labelledby="study-title">
+          <div style={sectionStyle}>
+            <h2 id="study-title" style={{ margin: 0 }}>
+              {text('學習設定')}
+            </h2>
+            <label style={{ display: 'grid', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 600 }}>{text('詞彙範圍')}</span>
+              <span style={{ color: 'var(--settings-muted, #586070)' }}>
+                {text(`而家練緊：${getVocabTierLabel(appState.settings.vocabTierStartRank)}`)}
+              </span>
+              <select
+                value={String(appState.settings.vocabTierStartRank)}
+                onChange={(event) => setVocabTierStartRank(Number(event.target.value))}
+                style={selectStyle}
+                aria-label={text('選擇詞彙範圍')}
+              >
+                {vocabTierOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {text(option.label)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <ThemePreferenceToggle
               value={appState.settings.themePreference}
               onChange={setThemePreference}
@@ -238,30 +267,11 @@ export function SettingsPage(): JSX.Element {
           </div>
         </section>
 
-        <section style={cardStyle} aria-labelledby="progress-title">
-          <div style={sectionStyle}>
-            <h2 id="progress-title" style={{ margin: 0 }}>
-              {text('進度概覽')}
-            </h2>
-            <div style={statGridStyle}>
-              {stats.map((stat) => (
-                <article key={stat.label} style={statStyle}>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--settings-muted, #586070)' }}>{text(stat.label)}</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{stat.value}</div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
         <section style={cardStyle} aria-labelledby="data-title">
           <div style={sectionStyle}>
             <h2 id="data-title" style={{ margin: 0 }}>
-              {text('資料匯入與匯出')}
+              {text('進度檔')}
             </h2>
-            <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('匯出的進度檔會包含詞彙進度、回鍋清單、發音進度與設定。')}
-            </p>
             <div style={actionRowStyle}>
               <button type="button" className="button button--secondary" onClick={handleExportClick}>
                 {text('匯出進度檔')}
@@ -290,33 +300,6 @@ export function SettingsPage(): JSX.Element {
             </div>
             {statusMessage ? <p role="status" style={{ margin: 0, color: '#0f766e' }}>{text(statusMessage)}</p> : null}
             {errorMessage ? <p role="alert" style={{ margin: 0, color: '#b91c1c' }}>{text(errorMessage)}</p> : null}
-          </div>
-        </section>
-
-        <section style={cardStyle} aria-labelledby="experimental-title">
-          <div style={sectionStyle}>
-            <h2 id="experimental-title" style={{ margin: 0 }}>
-              {text('實驗性功能')}
-            </h2>
-            <label style={{ display: 'grid', gap: '0.5rem' }}>
-              <span>{text('發音評分預留開關')}</span>
-              <button
-                type="button"
-                className="button button--secondary"
-                aria-pressed={Boolean(appState.progress.experimentalFlags.pronunciationScoringPreview)}
-                onClick={() =>
-                  setExperimentalFlag(
-                    'pronunciationScoringPreview',
-                    !appState.progress.experimentalFlags.pronunciationScoringPreview
-                  )
-                }
-              >
-                {appState.progress.experimentalFlags.pronunciationScoringPreview ? text('已啟用') : text('未啟用')}
-              </button>
-            </label>
-            <p style={{ margin: 0, color: 'var(--settings-muted, #586070)' }}>
-              {text('這個開關只供未來試驗使用，不會影響課程通關。')}
-            </p>
           </div>
         </section>
       </div>

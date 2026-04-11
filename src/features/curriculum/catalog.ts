@@ -112,7 +112,7 @@ export const unit2CurriculumPlan = withBookRoutes(
 
 export const vocabCurriculumPlan = withBookRoutes(
   promotePlanBooks(baseVocabPlan, vocabAdditionalPromotions),
-  () => '/vocab',
+  () => '/practice',
 );
 
 export const curriculumUnitPlans: readonly CurriculumUnitPlan[] = [
@@ -120,6 +120,9 @@ export const curriculumUnitPlans: readonly CurriculumUnitPlan[] = [
   unit2CurriculumPlan,
   vocabCurriculumPlan,
 ];
+
+export const curriculumBooks: readonly CurriculumBook[] = curriculumUnitPlans.flatMap((plan) => plan.books);
+export const builtCurriculumBooks: readonly CurriculumBook[] = curriculumBooks.filter((book) => book.status === 'built');
 
 export const curriculumBookTotals = {
   totalPlannedBooks: curriculumUnitPlans.reduce((total, plan) => total + plan.totalPlannedBooks, 0),
@@ -158,7 +161,7 @@ export function getStageBreakdown(plan: CurriculumUnitPlan): Array<{
 }
 
 const curriculumBookById = new Map<string, CurriculumBook>(
-  curriculumUnitPlans.flatMap((plan) => plan.books.map((book) => [book.id, book] as const)),
+  curriculumBooks.map((book) => [book.id, book] as const),
 );
 
 export function getCurriculumBookById(bookId: string): CurriculumBook | undefined {
@@ -169,30 +172,15 @@ export function getCurriculumUnitById(unitId: CurriculumBook['unitId']): Curricu
   return curriculumUnitPlans.find((plan) => plan.unitId === unitId);
 }
 
-export function getBuiltCurriculumBooksForUnit(unitId: CurriculumBook['unitId']): CurriculumBook[] {
-  const plan = getCurriculumUnitById(unitId);
-  if (!plan) {
-    return [];
-  }
-
-  return getBuiltBooks(plan);
-}
-
 export function getCurriculumBookPosition(bookId: string): { index: number; total: number } | undefined {
-  const book = getCurriculumBookById(bookId);
-  if (!book) {
-    return undefined;
-  }
-
-  const books = getBuiltCurriculumBooksForUnit(book.unitId);
-  const index = books.findIndex((item) => item.id === bookId);
+  const index = curriculumBooks.findIndex((item) => item.id === bookId);
   if (index < 0) {
     return undefined;
   }
 
   return {
     index: index + 1,
-    total: books.length,
+    total: curriculumBooks.length,
   };
 }
 
@@ -200,16 +188,10 @@ export function getAdjacentCurriculumBooks(bookId: string): {
   previousBook?: CurriculumBook;
   nextBook?: CurriculumBook;
 } {
-  const book = getCurriculumBookById(bookId);
-  if (!book) {
-    return {};
-  }
-
-  const books = getBuiltCurriculumBooksForUnit(book.unitId);
-  const index = books.findIndex((item) => item.id === bookId);
+  const index = builtCurriculumBooks.findIndex((item) => item.id === bookId);
 
   return {
-    previousBook: index > 0 ? books[index - 1] : undefined,
-    nextBook: index >= 0 && index < books.length - 1 ? books[index + 1] : undefined,
+    previousBook: index > 0 ? builtCurriculumBooks[index - 1] : undefined,
+    nextBook: index >= 0 && index < builtCurriculumBooks.length - 1 ? builtCurriculumBooks[index + 1] : undefined,
   };
 }
